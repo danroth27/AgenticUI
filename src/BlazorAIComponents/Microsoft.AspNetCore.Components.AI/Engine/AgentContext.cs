@@ -144,6 +144,15 @@ public class AgentContext : IDisposable
                 foreach (var interactive in interactiveBlocks)
                 {
                     resultTasks.Add(interactive.GetResultAsync(cancellationToken));
+
+                    // Frontend tools (UIActionBlock) are client-side actions the model declared and
+                    // expects the browser to run automatically — there is no human step. Invoke them
+                    // now so the run resumes without app-provided glue. Blocks that genuinely need a
+                    // person (e.g. FunctionApprovalBlock) are left to await external input.
+                    if (interactive is UIActionBlock action)
+                    {
+                        _ = action.InvokeAsync(cancellationToken);
+                    }
                 }
 
                 foreach (var toolBlock in uninvokedToolBlocks)
@@ -151,7 +160,8 @@ public class AgentContext : IDisposable
                     resultTasks.Add(InvokeBackendToolAsync(toolBlock, cancellationToken));
                 }
 
-                if (interactiveBlocks.Count > 0)
+                var needsHumanInput = interactiveBlocks.Any(b => b is not UIActionBlock);
+                if (needsHumanInput)
                 {
                     Status = ConversationStatus.AwaitingInput;
                     NotifyStatusChanged();
