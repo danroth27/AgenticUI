@@ -1,0 +1,112 @@
+@page "/backend-tools"
+@using System.Text.Json
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Backend tools</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Backend tools</h1>
+        <p>
+            The agent calls a <strong>server-side</strong> tool (<code>get_weather</code>). The tool
+            runs on the agent server; its call and result stream to the browser as AG-UI
+            <code>TOOL_CALL_*</code> events. Here a custom <code>&lt;BlockRenderer&gt;</code> turns the
+            <code>get_weather</code> invocation into a weather card instead of raw JSON.
+        </p>
+    </div>
+
+    <div class="scenario__chat">
+        <AgentBoundary Agent="_agent">
+            <div class="chat-body">
+                <MessageList>
+                    <BlockRenderer TBlock="FunctionInvocationContentBlock"
+                                   When="@(b => b.ToolName == "get_weather")">
+                        @{
+                            var w = ReadWeather(context);
+                        }
+                        <div class="weather-card">
+                            <div class="weather-card__icon">@(w.Conditions == "sunny" ? "☀️" : "🌤️")</div>
+                            <div class="weather-card__body">
+                                <div class="weather-card__location">@GetLocation(context)</div>
+                                <div class="weather-card__temp">@w.Temperature°C</div>
+                                <div class="weather-card__meta">
+                                    @w.Conditions · feels like @w.FeelsLike°C · humidity @w.Humidity% · wind @w.WindSpeed km/h
+                                </div>
+                                @if (!context.HasResult)
+                                {
+                                    <div class="weather-card__pending">Fetching weather…</div>
+                                }
+                            </div>
+                        </div>
+                    </BlockRenderer>
+                </MessageList>
+            </div>
+            <div class="chat-input">
+                <MessageInput Placeholder="Ask for the weather in a city…" />
+            </div>
+        </AgentBoundary>
+    </div>
+</div>
+
+@code {
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/backend_tool_rendering");
+        _agent = new UIAgent(_chatClient);
+    }
+
+    private static string GetLocation(FunctionInvocationContentBlock block)
+        => block.Arguments is not null && block.Arguments.TryGetValue("location", out var v)
+            ? v?.ToString() ?? "Unknown"
+            : "Unknown";
+
+    private static WeatherInfo ReadWeather(FunctionInvocationContentBlock block)
+    {
+        if (block.Result?.Result is null)
+        {
+            return new WeatherInfo();
+        }
+
+        try
+        {
+            var element = JsonSerializer.SerializeToElement(block.Result.Result);
+            if (element.ValueKind == JsonValueKind.String)
+            {
+                element = JsonDocument.Parse(element.GetString()!).RootElement;
+            }
+            return new WeatherInfo
+            {
+                Temperature = GetInt(element, "temperature"),
+                Conditions = GetString(element, "conditions"),
+                Humidity = GetInt(element, "humidity"),
+                WindSpeed = GetInt(element, "wind_speed"),
+                FeelsLike = GetInt(element, "feelsLike"),
+            };
+        }
+        catch
+        {
+            return new WeatherInfo();
+        }
+    }
+
+    private static int GetInt(JsonElement e, string name)
+        => e.TryGetProperty(name, out var v) && v.TryGetInt32(out var i) ? i : 0;
+
+    private static string GetString(JsonElement e, string name)
+        => e.TryGetProperty(name, out var v) ? v.GetString() ?? "" : "";
+
+    private sealed class WeatherInfo
+    {
+        public int Temperature { get; set; }
+        public string Conditions { get; set; } = "sunny";
+        public int Humidity { get; set; }
+        public int WindSpeed { get; set; }
+        public int FeelsLike { get; set; }
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

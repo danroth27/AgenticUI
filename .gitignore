@@ -1,0 +1,24 @@
+## .NET / Visual Studio
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+.vs/
+artifacts/
+
+## Rider
+.idea/
+
+## Aspire / local
+**/appsettings.*.local.json
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Playwright MCP output
+.playwright-mcp/

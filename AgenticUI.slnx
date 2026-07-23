@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgenticUI.AgentServer/AgenticUI.AgentServer.csproj" />
+    <Project Path="src/AgenticUI.AppHost/AgenticUI.AppHost.csproj" />
+    <Project Path="src/AgenticUI.ServiceDefaults/AgenticUI.ServiceDefaults.csproj" />
+    <Project Path="src/AgenticUI.Web/AgenticUI.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/vendor/">
+    <Project Path="src/vendor/Microsoft.AspNetCore.Components.AI.SourceGenerators/Microsoft.AspNetCore.Components.AI.SourceGenerators.csproj" />
+    <Project Path="src/vendor/Microsoft.AspNetCore.Components.AI/Microsoft.AspNetCore.Components.AI.csproj" />
+  </Folder>
+</Solution>

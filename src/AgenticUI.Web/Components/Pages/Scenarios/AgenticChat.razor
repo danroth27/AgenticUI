@@ -1,0 +1,41 @@
+@page "/agentic-chat"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Agentic Chat</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Agentic chat</h1>
+        <p>
+            The simplest AG-UI scenario: a streaming, multi-turn conversation. The Blazor
+            <code>&lt;ChatPage&gt;</code> component talks to an <code>IChatClient</code> that is an
+            <code>AGUIChatClient</code> pointed at the server's <code>/agentic_chat</code> endpoint.
+            Tokens stream in over Server-Sent Events as AG-UI <code>TEXT_MESSAGE_*</code> events.
+        </p>
+    </div>
+
+    <div class="scenario__chat">
+        <ChatPage Agent="_agent" Suggestions="_suggestions" Placeholder="Ask me anything…" />
+    </div>
+</div>
+
+@code {
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    private readonly IReadOnlyList<Suggestion> _suggestions =
+    [
+        new() { Label = "Say hello", Prompt = "Give me a friendly one-line greeting." },
+        new() { Label = "Fun fact", Prompt = "Tell me a surprising fun fact about the .NET ecosystem." },
+        new() { Label = "Explain AG-UI", Prompt = "In two sentences, what is the AG-UI protocol?" },
+    ];
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/agentic_chat");
+        _agent = new UIAgent(_chatClient);
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

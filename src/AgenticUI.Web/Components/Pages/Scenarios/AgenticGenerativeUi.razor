@@ -1,0 +1,70 @@
+@page "/agentic-generative-ui"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Agentic generative UI</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Agentic generative UI</h1>
+        <p>
+            The agent plans work with the <code>create_plan</code> tool (an AG-UI
+            <code>STATE_SNAPSHOT</code>) and advances each step with <code>update_plan_step</code> (an AG-UI
+            <code>STATE_DELTA</code> / JSON Patch). The UI renders live plan progress. Try:
+            <em>"Plan a weekend trip to Seattle."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask me to plan something…" />
+        </div>
+        <aside class="scenario__panel">
+            @if (_agent.State.Value.Steps.Count == 0)
+            {
+                <div class="panel-empty">The plan will appear here, updating as the agent works.</div>
+            }
+            else
+            {
+                <ol class="plan">
+                    @foreach (var step in _agent.State.Value.Steps)
+                    {
+                        var done = string.Equals(step.Status, "completed", StringComparison.OrdinalIgnoreCase);
+                        <li class="plan__step @(done ? "plan__step--done" : "")">
+                            <span class="plan__marker">@(done ? "✓" : "○")</span>
+                            <span class="plan__text">@step.Description</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </aside>
+    </div>
+</div>
+
+@code {
+    private UIAgent<PlanState> _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/agentic_generative_ui");
+        _agent = new UIAgent<PlanState>(_chatClient, options =>
+        {
+            options.StateMapper = ctx =>
+            {
+                if (AguiState.TryMap<PlanState>(ctx, () => _agent.State.Value, out var next))
+                {
+                    if (next is not null)
+                    {
+                        ctx.SetState(next);
+                    }
+                    return true;
+                }
+                return false;
+            };
+        });
+        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

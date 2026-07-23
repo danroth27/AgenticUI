@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgenticUI.ServiceDefaults\AgenticUI.ServiceDefaults.csproj" />
+    <!-- Vendored in-progress Blazor AI components (see src/vendor/.../NOTICE.md). Swap for the
+         official Microsoft.AspNetCore.Components.AI package once it ships. -->
+    <ProjectReference Include="..\vendor\Microsoft.AspNetCore.Components.AI\Microsoft.AspNetCore.Components.AI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AG-UI C# SDK client: turns an AG-UI endpoint into an IChatClient. -->
+    <PackageReference Include="AGUI.Client" Version="0.0.4" />
+    <!-- AG-UI protocol events (e.g. StateSnapshotEvent/StateDeltaEvent) surfaced on the client. -->
+    <PackageReference Include="AGUI.Abstractions" Version="0.0.4" />
+    <!-- AIFunctionFactory for client-side (frontend) tools. -->
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.6.0" />
+  </ItemGroup>
+
+</Project>

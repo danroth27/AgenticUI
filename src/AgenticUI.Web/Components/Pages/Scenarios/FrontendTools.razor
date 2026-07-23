@@ -1,0 +1,64 @@
+@page "/frontend-tools"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Frontend tools</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Frontend tools</h1>
+        <p>
+            A <strong>client-side</strong> tool runs in the browser, not on the server. We register a
+            <code>set_accent_color</code> UI action with the <code>UIAgent</code>; the model calls it and
+            the Blazor app executes it locally to restyle this page. Try:
+            <em>"Change the accent color to rebeccapurple."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <div class="scenario__chat" style="--accent: @_accent;">
+            <AgentBoundary Agent="_agent">
+                <UIActionRunner />
+                <div class="chat-body">
+                    <MessageList>
+                        <BlockRenderer TBlock="UIActionBlock">
+                            <div class="ui-action-chip">🎨 ran <code>@context.ToolName</code> in the browser</div>
+                        </BlockRenderer>
+                    </MessageList>
+                </div>
+                <div class="chat-input">
+                    <MessageInput Placeholder="Ask me to change the accent color…" />
+                </div>
+            </AgentBoundary>
+        </div>
+        <aside class="scenario__panel">
+            <div class="swatch" style="background: @_accent;"></div>
+            <div class="swatch-label">Current accent: <code>@_accent</code></div>
+        </aside>
+    </div>
+</div>
+
+@code {
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+    private string _accent = "#512bd4";
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/tool_based_generative_ui");
+
+        var setAccentColor = AIFunctionFactory.Create(
+            (string color) =>
+            {
+                _accent = color;
+                _ = InvokeAsync(StateHasChanged);
+                return $"Accent color set to {color}.";
+            },
+            name: "set_accent_color",
+            description: "Set the accent color of the page. Accepts any CSS color (name or hex).");
+
+        _agent = new UIAgent(_chatClient, options => options.RegisterUIAction(setAccentColor));
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

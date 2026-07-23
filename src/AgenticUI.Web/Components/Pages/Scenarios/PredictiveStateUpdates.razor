@@ -1,0 +1,60 @@
+@page "/predictive-state"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Predictive state updates</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Predictive state updates</h1>
+        <p>
+            As the agent writes a document with the <code>write_document</code> tool, the server streams the
+            document progressively as AG-UI <code>STATE_SNAPSHOT</code> events, so you watch it being typed
+            before the tool call even finishes. Try: <em>"Write a short story about a robot learning to paint."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask me to write or edit a document…" />
+        </div>
+        <aside class="scenario__panel">
+            @if (string.IsNullOrEmpty(_agent.State.Value.Document))
+            {
+                <div class="panel-empty">The document will appear here as the agent writes it.</div>
+            }
+            else
+            {
+                <article class="document">@_agent.State.Value.Document</article>
+            }
+        </aside>
+    </div>
+</div>
+
+@code {
+    private UIAgent<DocumentState> _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/predictive_state_updates");
+        _agent = new UIAgent<DocumentState>(_chatClient, options =>
+        {
+            options.StateMapper = ctx =>
+            {
+                if (AguiState.TryMap<DocumentState>(ctx, () => _agent.State.Value, out var next))
+                {
+                    if (next is not null)
+                    {
+                        ctx.SetState(next);
+                    }
+                    return true;
+                }
+                return false;
+            };
+        });
+        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

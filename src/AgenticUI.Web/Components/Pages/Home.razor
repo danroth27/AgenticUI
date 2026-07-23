@@ -1,0 +1,44 @@
+﻿@page "/"
+
+<PageTitle>AgenticUI — AG-UI for .NET</PageTitle>
+
+<div class="home">
+    <h1>Agentic UI for .NET</h1>
+    <p class="lead">
+        A tour of <strong>AG-UI</strong> (the Agent User Interaction Protocol) in .NET. The backend hosts
+        agents built with the <strong>Microsoft Agent Framework</strong> and the <strong>AG-UI C# SDK</strong>;
+        the frontend is <strong>Blazor</strong> using the new Blazor AI components. Aspire wires the two
+        together, and the agents run on free <strong>GitHub Models</strong>.
+    </p>
+
+    <div class="cards">
+        <a class="card" href="agentic-chat">
+            <h3>💬 Agentic chat</h3>
+            <p>Streaming, multi-turn conversation over AG-UI Server-Sent Events.</p>
+        </a>
+        <a class="card" href="backend-tools">
+            <h3>🛠️ Backend tools</h3>
+            <p>The agent calls a server-side tool; the UI renders a custom card for the result.</p>
+        </a>
+        <a class="card" href="frontend-tools">
+            <h3>🎨 Frontend tools</h3>
+            <p>The model calls a client-side tool that runs in the browser.</p>
+        </a>
+        <a class="card" href="human-in-the-loop">
+            <h3>✅ Human in the loop</h3>
+            <p>A tool requires approval; the run pauses for Approve / Reject.</p>
+        </a>
+        <a class="card" href="shared-state">
+            <h3>🔄 Shared state</h3>
+            <p>Agent and UI share a structured object via state snapshots.</p>
+        </a>
+        <a class="card" href="predictive-state">
+            <h3>📄 Predictive state</h3>
+            <p>Watch a document stream in live as the agent writes it.</p>
+        </a>
+        <a class="card" href="agentic-generative-ui">
+            <h3>📋 Agentic generative UI</h3>
+            <p>Live plan progress driven by state snapshots and JSON-Patch deltas.</p>
+        </a>
+    </div>
+</div>

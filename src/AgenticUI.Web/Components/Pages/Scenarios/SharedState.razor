@@ -1,0 +1,91 @@
+@page "/shared-state"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Shared state</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Shared state</h1>
+        <p>
+            The agent and the UI share a structured object. The agent returns a recipe as JSON, which the
+            server emits as an AG-UI <code>STATE_SNAPSHOT</code>; the client maps it into a strongly-typed
+            <code>UIAgent&lt;RecipeState&gt;</code> and renders the live recipe card. Try:
+            <em>"Make me a vegetarian pasta recipe."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask for a recipe…" />
+        </div>
+        <aside class="scenario__panel">
+            @{ var r = _agent.State.Value.Recipe; }
+            @if (string.IsNullOrEmpty(r.Title))
+            {
+                <div class="panel-empty">The recipe will appear here as the agent builds it.</div>
+            }
+            else
+            {
+                <div class="recipe">
+                    <h2>@r.Title</h2>
+                    <div class="recipe__meta">
+                        @if (!string.IsNullOrEmpty(r.SkillLevel)) { <span>🎚️ @r.SkillLevel</span> }
+                        @if (!string.IsNullOrEmpty(r.CookingTime)) { <span>⏱️ @r.CookingTime</span> }
+                    </div>
+                    @if (r.SpecialPreferences.Count > 0)
+                    {
+                        <div class="recipe__tags">
+                            @foreach (var p in r.SpecialPreferences) { <span class="tag">@p</span> }
+                        </div>
+                    }
+                    @if (r.Ingredients.Count > 0)
+                    {
+                        <h3>Ingredients</h3>
+                        <ul class="recipe__ingredients">
+                            @foreach (var i in r.Ingredients)
+                            {
+                                <li>@i.Icon @i.Name <span class="amount">@i.Amount</span></li>
+                            }
+                        </ul>
+                    }
+                    @if (r.Instructions.Count > 0)
+                    {
+                        <h3>Instructions</h3>
+                        <ol class="recipe__steps">
+                            @foreach (var s in r.Instructions) { <li>@s</li> }
+                        </ol>
+                    }
+                </div>
+            }
+        </aside>
+    </div>
+</div>
+
+@code {
+    private UIAgent<RecipeState> _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/shared_state");
+        _agent = new UIAgent<RecipeState>(_chatClient, options =>
+        {
+            options.StateMapper = ctx =>
+            {
+                if (AguiState.TryMap<RecipeState>(ctx, () => _agent.State.Value, out var next))
+                {
+                    if (next is not null)
+                    {
+                        ctx.SetState(next);
+                    }
+                    return true;
+                }
+                return false;
+            };
+        });
+        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}
