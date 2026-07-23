@@ -17,8 +17,9 @@ namespace AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 /// </summary>
 /// <remarks>
 /// State events are surfaced by setting <see cref="ChatResponseUpdate.RawRepresentation"/> to a
-/// <see cref="StateSnapshotEvent"/> / <see cref="StateDeltaEvent"/>. (Emitting a
-/// <c>DataContent("application/json")</c> — as some samples do — is silently dropped by AGUI.Server.)
+/// <see cref="StateSnapshotEvent"/> / <see cref="StateDeltaEvent"/>. (This is the supported API;
+/// emitting state as a <c>DataContent("application/json")</c>, as some older samples do, was a
+/// pre-public-API hack and is intentionally no longer supported.)
 /// </remarks>
 [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by the agent catalog.")]
 internal sealed class AgenticUIAgent : DelegatingAIAgent
