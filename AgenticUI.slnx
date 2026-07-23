@@ -5,8 +5,8 @@
     <Project Path="src/AgenticUI.ServiceDefaults/AgenticUI.ServiceDefaults.csproj" />
     <Project Path="src/AgenticUI.Web/AgenticUI.Web.csproj" />
   </Folder>
-  <Folder Name="/src/vendor/">
-    <Project Path="src/vendor/Microsoft.AspNetCore.Components.AI.SourceGenerators/Microsoft.AspNetCore.Components.AI.SourceGenerators.csproj" />
-    <Project Path="src/vendor/Microsoft.AspNetCore.Components.AI/Microsoft.AspNetCore.Components.AI.csproj" />
+  <Folder Name="/src/BlazorAIComponents/">
+    <Project Path="src/BlazorAIComponents/Microsoft.AspNetCore.Components.AI.SourceGenerators/Microsoft.AspNetCore.Components.AI.SourceGenerators.csproj" />
+    <Project Path="src/BlazorAIComponents/Microsoft.AspNetCore.Components.AI/Microsoft.AspNetCore.Components.AI.csproj" />
   </Folder>
 </Solution>

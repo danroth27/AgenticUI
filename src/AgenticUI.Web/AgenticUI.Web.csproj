@@ -9,9 +9,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgenticUI.ServiceDefaults\AgenticUI.ServiceDefaults.csproj" />
-    <!-- Vendored in-progress Blazor AI components (see src/vendor/.../NOTICE.md). Swap for the
-         official Microsoft.AspNetCore.Components.AI package once it ships. -->
-    <ProjectReference Include="..\vendor\Microsoft.AspNetCore.Components.AI\Microsoft.AspNetCore.Components.AI.csproj" />
+    <!-- Bundled copy of the in-progress Blazor AI components (a local copy of the source; see
+         src/BlazorAIComponents/.../NOTICE.md). Swap for the official
+         Microsoft.AspNetCore.Components.AI NuGet package once it ships. -->
+    <ProjectReference Include="..\BlazorAIComponents\Microsoft.AspNetCore.Components.AI\Microsoft.AspNetCore.Components.AI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

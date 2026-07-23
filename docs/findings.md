@@ -18,9 +18,11 @@ Built against:
   with zero AG-UI-specific code.
 - **GitHub Models is a great free backend.** Pointing an `OpenAIClient` at `https://models.github.ai/inference`
   with a GitHub token (the `gh auth token` works) and calling `.AsAIAgent(...)` was frictionless.
-- **Streaming chat, backend tools, and human-in-the-loop approvals worked end-to-end** with released bits.
-  The `ApprovalRequiredAIFunction` → AG-UI interrupt → `ToolApprovalRequestContent` → Blazor
-  `FunctionApprovalBlock` (Approve/Reject) → resume round-trip is smooth.
+- **Streaming chat, backend tools, human-in-the-loop approvals, shared/predictive/plan state, and
+  reasoning all worked end-to-end** (state and reasoning after the fixes below). The
+  `ApprovalRequiredAIFunction` → AG-UI interrupt → `ToolApprovalRequestContent` → Blazor
+  `FunctionApprovalBlock` (Approve/Reject) → resume round-trip is smooth. Reasoning surfaces as AG-UI
+  `REASONING_*` events → `TextReasoningContent` → the Blazor collapsible "thought process" block.
 
 ## Bugs / issues found
 
@@ -110,6 +112,12 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
 
 ## Minor observations (not bugs)
 
+- **Reasoning models on GitHub Models emit `<think>…</think>` inline** in the message content rather
+  than a separate `reasoning_content` field, so `Microsoft.Extensions.AI` doesn't auto-map it to
+  `TextReasoningContent`. This sample adds a small streaming `ReasoningAgent` that splits the `<think>`
+  block out and re-emits it as `TextReasoningContent` (which then flows through AG-UI `REASONING_*`
+  events to the Blazor reasoning block). A reusable "`<think>` splitter" chat-client middleware in
+  `Microsoft.Extensions.AI` (or MAF) would remove this per-app glue.
 - **HITL model behavior:** `gpt-4o-mini` often replies "shall I proceed?" in text before actually calling
   an approval-required tool. Tightening the system prompt (or using a stronger model) makes it call the
   tool on the first turn. Not a framework issue.

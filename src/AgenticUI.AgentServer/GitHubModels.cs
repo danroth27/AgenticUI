@@ -16,6 +16,7 @@ public sealed class GitHubModelsOptions
 {
     public const string DefaultEndpoint = "https://models.github.ai/inference";
     public const string DefaultModel = "openai/gpt-4o-mini";
+    public const string DefaultReasoningModel = "deepseek/deepseek-r1";
 
     /// <summary>GitHub token with the <c>models</c> permission.</summary>
     public string? Token { get; set; }
@@ -25,6 +26,9 @@ public sealed class GitHubModelsOptions
 
     /// <summary>The model id, e.g. <c>openai/gpt-4o-mini</c>.</summary>
     public string Model { get; set; } = DefaultModel;
+
+    /// <summary>A reasoning-capable model id used by the reasoning scenario.</summary>
+    public string ReasoningModel { get; set; } = DefaultReasoningModel;
 }
 
 /// <summary>Helpers for resolving GitHub Models configuration and building a chat client.</summary>
@@ -41,6 +45,7 @@ public static class GitHubModels
 
         options.Token = configuration["GITHUB_TOKEN"] ?? options.Token;
         options.Model = configuration["GITHUB_MODEL"] ?? options.Model;
+        options.ReasoningModel = configuration["GITHUB_REASONING_MODEL"] ?? options.ReasoningModel;
         options.Endpoint = configuration["GITHUB_MODELS_ENDPOINT"] ?? options.Endpoint;
 
         if (string.IsNullOrWhiteSpace(options.Token))
@@ -54,13 +59,15 @@ public static class GitHubModels
         return options;
     }
 
-    /// <summary>Creates a <see cref="ChatClient"/> for the configured GitHub Models deployment.</summary>
-    public static ChatClient CreateChatClient(GitHubModelsOptions options)
+    /// <summary>Creates a <see cref="ChatClient"/> for a GitHub Models deployment.</summary>
+    /// <param name="options">The GitHub Models configuration.</param>
+    /// <param name="model">The model id to use; defaults to <see cref="GitHubModelsOptions.Model"/>.</param>
+    public static ChatClient CreateChatClient(GitHubModelsOptions options, string? model = null)
     {
         var client = new OpenAIClient(
             new ApiKeyCredential(options.Token!),
             new OpenAIClientOptions { Endpoint = new Uri(options.Endpoint) });
 
-        return client.GetChatClient(options.Model);
+        return client.GetChatClient(model ?? options.Model);
     }
 }

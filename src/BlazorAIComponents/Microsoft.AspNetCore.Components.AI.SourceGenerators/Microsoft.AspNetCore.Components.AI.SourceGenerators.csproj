@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Vendored source-generator for the in-progress Microsoft.AspNetCore.Components.AI components.
-    See ../Microsoft.AspNetCore.Components.AI/NOTICE.md for provenance. Refresh via
+    Bundled local copy of the source-generator for the in-progress Microsoft.AspNetCore.Components.AI
+    components. See ../Microsoft.AspNetCore.Components.AI/NOTICE.md for provenance. Refresh via
     eng/sync-components-ai.ps1. Remove when the official NuGet package ships.
   -->
   <PropertyGroup>

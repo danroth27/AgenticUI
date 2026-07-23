@@ -4,6 +4,7 @@ using System.Text.Json;
 using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;
 using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
+using AgenticUI.AgentServer.Scenarios.Reasoning;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -15,9 +16,10 @@ namespace AgenticUI.AgentServer;
 /// Builds the <see cref="AIAgent"/> instances for each AG-UI demo scenario. Each agent is mapped to
 /// its own AG-UI endpoint in <c>Program.cs</c> via <c>MapAGUIServer</c>.
 /// </summary>
-public sealed class AgentCatalog(ChatClient chatClient, JsonSerializerOptions jsonOptions)
+public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChatClient, JsonSerializerOptions jsonOptions)
 {
     private readonly ChatClient _chatClient = chatClient;
+    private readonly ChatClient _reasoningChatClient = reasoningChatClient;
     private readonly JsonSerializerOptions _jsonOptions = jsonOptions;
 
     /// <summary>Basic streaming chat — text in, streamed text out.</summary>
@@ -159,6 +161,17 @@ public sealed class AgentCatalog(ChatClient chatClient, JsonSerializerOptions js
         });
 
         return new PredictiveStateUpdatesAgent(baseAgent, this._jsonOptions);
+    }
+
+    /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
+    public AIAgent CreateReasoning()
+    {
+        var baseAgent = this._reasoningChatClient.AsAIAgent(
+            name: "ReasoningAgent",
+            description: "A reasoning model that shows its thinking.",
+            instructions: "Think step by step, then give a concise final answer.");
+
+        return new ReasoningAgent(baseAgent);
     }
 
     private static WeatherInfo GetWeather(string location) => new()

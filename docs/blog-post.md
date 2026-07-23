@@ -199,8 +199,8 @@ A few notes on maturity, since these are fresh bits:
 - The **AG-UI C# SDK** (`AGUI.*`) and the core **Microsoft Agent Framework** packages are shipping.
 - The **MAF AG-UI hosting** package (`Microsoft.Agents.AI.Hosting.AGUI.AspNetCore`) is still **preview**.
 - The **Blazor AI components** are **in progress** in
-  [dotnet/aspnetcore#67673](https://github.com/dotnet/aspnetcore/pull/67673). The sample vendors a source
-  snapshot so it builds standalone today; when the package ships it's a one-line swap.
+  [dotnet/aspnetcore#67673](https://github.com/dotnet/aspnetcore/pull/67673). The sample checks in a
+  local copy of their source so it builds standalone today; when the package ships it's a one-line swap.
 
 The important takeaway: the programming model is stable and simple. On both ends, it's just `IChatClient`.
 AG-UI gives you a standard event stream; MAF gives you agents and hosting; Blazor gives you the components

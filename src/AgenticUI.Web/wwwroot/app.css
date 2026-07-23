@@ -115,3 +115,5 @@ h1:focus {
 
 .ui-action-chip { display:inline-block; padding:.3rem .7rem; margin:.4rem 0; border-radius:999px; background:#f0ebff; color:#512bd4; font-size:.85rem; }
 .ui-action-chip code { background:transparent; color:inherit; }
+
+.scenario__note { color:#888; font-size:.85rem; font-style:italic; margin-top:.25rem; }

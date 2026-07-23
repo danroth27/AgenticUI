@@ -1,0 +1,35 @@
+@page "/reasoning"
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Reasoning</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Reasoning</h1>
+        <p>
+            A reasoning model (DeepSeek-R1 on GitHub Models) exposes its chain of thought. The server
+            re-emits that thinking as AG-UI <code>REASONING_*</code> events, and the Blazor AI components
+            render it as a collapsible <em>"thought process"</em> panel, separate from the final answer.
+            Try: <em>"If a bat and a ball cost $1.10 and the bat costs $1 more than the ball, how much is the ball?"</em>
+        </p>
+        <p class="scenario__note">Note: reasoning models are slower — give it a few seconds.</p>
+    </div>
+
+    <div class="scenario__chat">
+        <ChatPage Agent="_agent" Placeholder="Ask a question that needs some thought…" />
+    </div>
+</div>
+
+@code {
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/reasoning");
+        _agent = new UIAgent(_chatClient);
+    }
+
+    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+}

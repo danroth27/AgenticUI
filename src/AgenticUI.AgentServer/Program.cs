@@ -21,8 +21,9 @@ app.MapDefaultEndpoints();
 // Build the per-scenario agents backed by the free GitHub Models endpoint.
 var githubModels = GitHubModels.ReadOptions(app.Configuration);
 var chatClient = GitHubModels.CreateChatClient(githubModels);
+var reasoningChatClient = GitHubModels.CreateChatClient(githubModels, githubModels.ReasoningModel);
 var jsonOptions = app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
-var agents = new AgentCatalog(chatClient, jsonOptions);
+var agents = new AgentCatalog(chatClient, reasoningChatClient, jsonOptions);
 
 // Map one AG-UI endpoint per scenario. Each is an HTTP POST that streams AG-UI events (SSE).
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
@@ -32,11 +33,13 @@ app.MapAGUIServer("/tool_based_generative_ui", agents.CreateToolBasedGenerativeU
 app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI());
 app.MapAGUIServer("/shared_state", agents.CreateSharedState());
 app.MapAGUIServer("/predictive_state_updates", agents.CreatePredictiveStateUpdates());
+app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 
 app.MapGet("/", () => Results.Ok(new
 {
     service = "AgenticUI AG-UI agent server",
     model = githubModels.Model,
+    reasoningModel = githubModels.ReasoningModel,
     endpoints = new[]
     {
         "/agentic_chat",
@@ -45,7 +48,8 @@ app.MapGet("/", () => Results.Ok(new
         "/tool_based_generative_ui",
         "/agentic_generative_ui",
         "/shared_state",
-        "/predictive_state_updates"
+        "/predictive_state_updates",
+        "/reasoning"
     }
 }));
 

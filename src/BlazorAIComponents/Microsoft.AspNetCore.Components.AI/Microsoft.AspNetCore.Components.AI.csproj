@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <!--
-    Vendored snapshot of the in-progress Blazor AI components (@javiercn, aspnetcore PR #67673).
+    Bundled local copy of the in-progress Blazor AI components (@javiercn, aspnetcore PR #67673).
     See NOTICE.md for provenance. Refresh via eng/sync-components-ai.ps1. The assembly name and
     namespace intentionally match the upstream package so this can be swapped for the official
     Microsoft.AspNetCore.Components.AI NuGet package with no code changes when it ships.

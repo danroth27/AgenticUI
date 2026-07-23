@@ -1,15 +1,15 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Refreshes the vendored snapshot of the in-progress Microsoft.AspNetCore.Components.AI
-    library (javiercn's Blazor AI components, aspnetcore PR #67673 / branch
-    javiercn/components-ai-full) from a local aspnetcore clone.
+    Refreshes the bundled copy of the in-progress Microsoft.AspNetCore.Components.AI library
+    (javiercn's Blazor AI components, aspnetcore PR #67673 / branch javiercn/components-ai-full)
+    from a local aspnetcore clone.
 
 .DESCRIPTION
-    The Blazor AI components are not yet published as a NuGet package. This sample vendors a
-    snapshot of their source so the repo is fully standalone (clone + `dotnet build` with only
-    the .NET 10 SDK). Run this script to update the snapshot from a newer aspnetcore checkout.
-    When the official Microsoft.AspNetCore.Components.AI package ships, delete src/vendor and
+    The Blazor AI components are not yet published as a NuGet package. This sample keeps a local
+    copy of their source so the repo is fully standalone (clone + `dotnet build` with only the
+    .NET 10 SDK). Run this script to update the copy from a newer aspnetcore checkout. When the
+    official Microsoft.AspNetCore.Components.AI package ships, delete src/BlazorAIComponents and
     replace the ProjectReferences with a PackageReference of the same name.
 
 .PARAMETER AspNetCoreRepo
@@ -33,8 +33,8 @@ $genRoot = Join-Path $componentsAi "gen"
 if (-not (Test-Path $srcRoot)) { throw "Could not find $srcRoot. Is the clone on the components-ai branch?" }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$vendorLib = Join-Path $repoRoot "src\vendor\Microsoft.AspNetCore.Components.AI"
-$vendorGen = Join-Path $repoRoot "src\vendor\Microsoft.AspNetCore.Components.AI.SourceGenerators"
+$libDir = Join-Path $repoRoot "src\BlazorAIComponents\Microsoft.AspNetCore.Components.AI"
+$genDir = Join-Path $repoRoot "src\BlazorAIComponents\Microsoft.AspNetCore.Components.AI.SourceGenerators"
 
 function Sync-Tree([string]$from, [string]$to, [string[]]$excludeDirs) {
     Get-ChildItem $to -Recurse -Filter *.cs -ErrorAction SilentlyContinue | Remove-Item -Force
@@ -53,13 +53,13 @@ function Sync-Tree([string]$from, [string]$to, [string[]]$excludeDirs) {
     return $files.Count
 }
 
-$libCount = Sync-Tree $srcRoot $vendorLib @('bin','obj')
-$genCount = Sync-Tree $genRoot $vendorGen @('bin','obj','test')
+$libCount = Sync-Tree $srcRoot $libDir @('bin','obj')
+$genCount = Sync-Tree $genRoot $genDir @('bin','obj','test')
 
-# Copy the component stylesheet (static web asset) so the vendored RCL serves it under
+# Copy the component stylesheet (static web asset) so the local-copy RCL serves it under
 # _content/Microsoft.AspNetCore.Components.AI/.
 $wwwrootFrom = Join-Path $srcRoot "wwwroot"
-$wwwrootTo = Join-Path $vendorLib "wwwroot"
+$wwwrootTo = Join-Path $libDir "wwwroot"
 if (Test-Path $wwwrootFrom) {
     if (Test-Path $wwwrootTo) { Remove-Item $wwwrootTo -Recurse -Force }
     Copy-Item $wwwrootFrom $wwwrootTo -Recurse -Force
@@ -70,10 +70,11 @@ $branch = (git -C $AspNetCoreRepo rev-parse --abbrev-ref HEAD).Trim()
 $stamp = (Get-Date).ToString("yyyy-MM-dd")
 
 $notice = @"
-# Vendored: Microsoft.AspNetCore.Components.AI
+# Bundled copy: Microsoft.AspNetCore.Components.AI
 
-This folder contains a **source snapshot** of the in-progress Blazor AI components
-(``Microsoft.AspNetCore.Components.AI``) authored by @javiercn.
+This folder is a **local copy of the source** for the in-progress Blazor AI components
+(``Microsoft.AspNetCore.Components.AI``) authored by @javiercn. It is not a fork or a product —
+just a snapshot checked in so this sample builds on its own.
 
 - Upstream: https://github.com/dotnet/aspnetcore (``src/Components/AI``)
 - Tracking PR: https://github.com/dotnet/aspnetcore/pull/67673
@@ -82,22 +83,23 @@ This folder contains a **source snapshot** of the in-progress Blazor AI componen
 - Snapshot date: $stamp
 - License: MIT (see https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)
 
-## Why this is vendored
+## Why the source is copied in
 
-These components are **not yet published as a NuGet package**. Vendoring the source keeps this
-sample fully standalone: clone the repo and ``dotnet build`` with only the .NET 10 SDK, with no
-dependency on an aspnetcore checkout. Everything else in the sample uses released NuGet packages.
+These components are **not yet published as a NuGet package**. Keeping a local copy of the source
+makes this sample fully standalone: clone the repo and ``dotnet build`` with only the .NET 10 SDK,
+with no dependency on an aspnetcore checkout. Everything else in the sample uses released NuGet
+packages.
 
-## Refreshing the snapshot
+## Refreshing the copy
 
 ``pwsh eng/sync-components-ai.ps1 -AspNetCoreRepo <path to dotnet/aspnetcore clone>``
 
 ## When the official package ships
 
-Delete ``src/vendor`` and replace the two ``ProjectReference`` items in
+Delete ``src/BlazorAIComponents`` and replace the two ``ProjectReference`` items in
 ``AgenticUI.Web`` with a single ``PackageReference Include="Microsoft.AspNetCore.Components.AI"``.
 The assembly name and namespace are identical, so no code changes are required.
 "@
-Set-Content -Path (Join-Path $vendorLib "NOTICE.md") -Value $notice -Encoding utf8
+Set-Content -Path (Join-Path $libDir "NOTICE.md") -Value $notice -Encoding utf8
 
-Write-Host "Vendored $libCount library files and $genCount source-generator files from $branch@$($commit.Substring(0,10))."
+Write-Host "Copied $libCount library files and $genCount source-generator files from $branch@$($commit.Substring(0,10))."

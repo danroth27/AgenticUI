@@ -18,6 +18,7 @@ no paid Azure or OpenAI resources required.
 | **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
 | **Predictive state** | A document streamed live via progressive `STATE_SNAPSHOT`s | `/predictive_state_updates` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
+| **Reasoning** | A reasoning model's chain of thought via `REASONING_*` events | `/reasoning` |
 
 ## Architecture
 
@@ -56,8 +57,9 @@ Everything except the Blazor AI components uses released NuGet packages:
 
 The Blazor AI components (`Microsoft.AspNetCore.Components.AI`) are **in progress** in
 [dotnet/aspnetcore#67673](https://github.com/dotnet/aspnetcore/pull/67673) and not yet published to
-NuGet. To keep this sample **standalone**, a source snapshot is vendored under
-[`src/vendor/`](src/vendor/Microsoft.AspNetCore.Components.AI/NOTICE.md) (MIT-licensed, with
+NuGet. To keep this sample **standalone**, a local copy of their source is checked in under
+[`src/BlazorAIComponents/`](src/BlazorAIComponents/Microsoft.AspNetCore.Components.AI/NOTICE.md)
+(MIT-licensed, with
 provenance). The assembly and namespace match the upstream package, so swapping to the official
 NuGet package later is a one-line change. Refresh the snapshot with
 [`eng/sync-components-ai.ps1`](eng/sync-components-ai.ps1).
@@ -79,7 +81,9 @@ Set it as an AppHost user-secret (recommended):
 dotnet user-secrets set "Parameters:github-token" "$(gh auth token)" --project src/AgenticUI.AppHost
 ```
 
-The model defaults to `openai/gpt-4o-mini`; override with `Parameters:github-model`.
+The model defaults to `openai/gpt-4o-mini`; override with `Parameters:github-model`. The reasoning
+scenario uses a separate reasoning model (`deepseek/deepseek-r1` by default; override with
+`Parameters:github-reasoning-model` or the `GITHUB_REASONING_MODEL` env var).
 
 ### Run
 
@@ -97,12 +101,12 @@ src/
   AgenticUI.ServiceDefaults/  Shared service defaults
   AgenticUI.AgentServer/      AG-UI backend (MAF + AG-UI C# SDK)
   AgenticUI.Web/              Blazor front end (Blazor AI components)
-  vendor/                     Vendored in-progress Blazor AI components
+  BlazorAIComponents/         Bundled local copy of the in-progress Blazor AI components
 docs/
   blog-post.md               Draft blog post summarizing the AG-UI scenarios
   findings.md                Bugs / issues found while building this sample
 eng/
-  sync-components-ai.ps1     Refresh the vendored components snapshot
+  sync-components-ai.ps1     Refresh the local copy of the Blazor AI components
 ```
 
 ## Notes & findings
