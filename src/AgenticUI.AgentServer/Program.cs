@@ -34,6 +34,8 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI());
 app.MapAGUIServer("/shared_state", agents.CreateSharedState());
 app.MapAGUIServer("/predictive_state_updates", agents.CreatePredictiveStateUpdates());
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
+app.MapAGUIServer("/workflow", agents.CreateWorkflow());
+app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -49,7 +51,9 @@ app.MapGet("/", () => Results.Ok(new
         "/agentic_generative_ui",
         "/shared_state",
         "/predictive_state_updates",
-        "/reasoning"
+        "/reasoning",
+        "/workflow",
+        "/selective_approval"
     }
 }));
 

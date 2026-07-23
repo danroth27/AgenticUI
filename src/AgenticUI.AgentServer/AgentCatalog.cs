@@ -7,6 +7,7 @@ using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AgenticUI.AgentServer.Scenarios.Reasoning;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
 
@@ -174,6 +175,44 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
         return new ReasoningAgent(baseAgent);
     }
 
+    /// <summary>[Test] A sequential workflow (researcher -> reporter) exposed as an AG-UI agent.</summary>
+    public AIAgent CreateWorkflow()
+    {
+        AIAgent researcher = this._chatClient.AsAIAgent(
+            name: "researcher",
+            instructions: "Research the user's topic and write a short, factual brief in under 80 words.");
+        AIAgent reporter = this._chatClient.AsAIAgent(
+            name: "reporter",
+            instructions: "Summarize the researcher's brief into a single clear sentence.");
+
+        return AgentWorkflowBuilder
+            .BuildSequential(researcher, reporter)
+            .AsAIAgent(name: "ResearchWorkflow");
+    }
+
+    /// <summary>[Test] Selective approval: one tool requires approval, another does not.</summary>
+    public AIAgent CreateSelectiveApproval()
+    {
+        AITool getBalance = AIFunctionFactory.Create(
+            GetAccountBalance, name: "get_account_balance",
+            description: "Get the current account balance. Does not require approval.");
+
+        AITool transfer = new ApprovalRequiredAIFunction(AIFunctionFactory.Create(
+            TransferFunds, name: "transfer_funds",
+            description: "Transfer money to another account."));
+
+        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        {
+            Name = "SelectiveApprovalAgent",
+            ChatOptions = new ChatOptions
+            {
+                Instructions = "You are a banking assistant. Use get_account_balance to check balances " +
+                               "and transfer_funds to move money. Call the tools directly.",
+                Tools = [getBalance, transfer]
+            }
+        });
+    }
+
     private static WeatherInfo GetWeather(string location) => new()
     {
         Temperature = 20,
@@ -184,6 +223,11 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
     };
 
     private static string BookMeeting(string title, string time) => $"Booked '{title}' for {time}.";
+
+    private static string GetAccountBalance() => "Your current balance is $1,250.00.";
+
+    private static string TransferFunds(string toAccount, decimal amount) =>
+        $"Transferred {amount:C} to account {toAccount}.";
 
     private static string WriteDocument(string document) => "Document written successfully";
 }

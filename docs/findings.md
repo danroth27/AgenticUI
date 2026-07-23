@@ -123,3 +123,36 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
   tool on the first turn. Not a framework issue.
 - **AG-UI hosting is still preview** (`Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview) even
   though the core `Microsoft.Agents.AI` packages are stable 1.15.0. Worth calling out in docs/blog.
+
+## Limitations relative to Python AG-UI support (doc-parity follow-ups)
+
+Found while bringing the C# Learn docs to parity with the Python docs. Each was verified against actual
+.NET behavior (see method):
+
+1. **No tool "approval modes."** Python has `@tool(approval_mode="always_require" | "never_require" |
+   "conditional")`. .NET's `ApprovalRequiredAIFunction` has a single constructor `ctor(AIFunction)` —
+   always require. "Never" = don't wrap; there is **no `conditional` mode**. (Verified via reflection on
+   `Microsoft.Extensions.AI.Abstractions`; the `*ApprovalMode` types are for hosted MCP tools, a
+   different feature.) The C# docs now describe the wrap/don't-wrap model instead of porting the Python
+   modes.
+
+2. **Workflows over AG-UI stream agent output only, not workflow events.** A workflow converted with
+   `AgentWorkflowBuilder.BuildSequential(...).AsAIAgent()` and mapped with `MapAGUIServer` streams each
+   constituent agent's `TEXT_MESSAGE_*` / `TOOL_CALL_*` events (with `AuthorName` per agent), but emits
+   **no** AG-UI workflow events (`STEP_STARTED/FINISHED`, `ACTIVITY_SNAPSHOT/DELTA`, workflow-level
+   interrupts) that the Python integration provides. (Verified: POSTing to a `/workflow` endpoint yielded
+   RUN_STARTED, 2× TEXT_MESSAGE_START named "researcher"/"reporter", TEXT_MESSAGE_CONTENT, RUN_FINISHED —
+   and nothing else.) The C# `workflows.md` scopes this honestly.
+
+3. **No `wildcard tool arguments` equivalent.** Python's "Advanced State Patterns" uses Pydantic wildcard
+   kwargs; there is no direct .NET analog, so that section is intentionally omitted from the C# docs.
+
+4. **State via `DataContent` is dropped** (see bug #1) — must use `RawRepresentation = StateSnapshotEvent`.
+5. **Blazor `UIAgent<TState>` / `AGUIChatClient` don't auto-send client state** (`RunAgentInput.State`);
+   a client must set it manually via `ChatOptions.RawRepresentationFactory` (see bug #2).
+6. **`UIActionBlock` has no default renderer/auto-invoke** (see bug #3).
+
+Verified-and-documented C# scenarios (tested, not guessed): agentic chat, backend tools, frontend tools,
+human-in-the-loop approval (approve→resume), **selective approval** (mixed approved/unapproved tools in
+one turn), shared state, predictive state, agentic generative UI, reasoning, **workflow-as-agent**, and
+the minimal-body `curl` test.
