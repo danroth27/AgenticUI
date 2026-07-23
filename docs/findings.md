@@ -31,8 +31,11 @@ Built against:
 > [`proposed-issues/`](proposed-issues/README.md).
 >
 > - **Bug #1 (DataContent state dropped)** → `ag-ui-protocol/ag-ui` (`AGUI.Server`). **Not tracked** →
->   [draft issue](proposed-issues/ag-ui-01-datacontent-state-dropped.md). The repo's own
->   `AGUIDojoServer` example relies on the dropped pattern.
+>   [draft issue](proposed-issues/ag-ui-01-datacontent-state-dropped.md). Reframed: the shipped state
+>   contract is `RawRepresentation = StateSnapshotEvent` / `MapResultAsStateSnapshot` (which works);
+>   the ask is that unmapped content (e.g. `DataContent`) is dropped **silently** with no diagnostic.
+>   The repo's `AGUIDojoServer` example still uses the old `DataContent`/`ag_ui_state` contract, which
+>   is why it's easy to hit.
 > - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** →
 >   [draft issue](proposed-issues/ag-ui-02-dojo-example-stale.md) (pinned to an old preview; uses the
 >   removed `AddAGUI`/`MapAGUI`).

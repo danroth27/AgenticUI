@@ -10,7 +10,7 @@ issues to avoid duplicates (searched 2026-07-23).
 
 | # | File | Target repo | Kind |
 |---|------|-------------|------|
-| 1 | [`ag-ui-01-datacontent-state-dropped.md`](ag-ui-01-datacontent-state-dropped.md) | `ag-ui-protocol/ag-ui` | Bug (high) |
+| 1 | [`ag-ui-01-datacontent-state-dropped.md`](ag-ui-01-datacontent-state-dropped.md) | `ag-ui-protocol/ag-ui` | DX/Bug (medium) — silent drop of unmapped content |
 | 2 | [`ag-ui-02-dojo-example-stale.md`](ag-ui-02-dojo-example-stale.md) | `ag-ui-protocol/ag-ui` | Bug / chore (can be a PR) |
 
 ## Already tracked — comment, do NOT open a duplicate

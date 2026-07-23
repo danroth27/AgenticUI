@@ -1,58 +1,56 @@
-# [Bug]: .NET `AGUI.Server` silently drops shared state emitted as `DataContent` (STATE_SNAPSHOT / STATE_DELTA never sent)
+# [DX/Bug]: .NET `AGUI.Server` silently drops unmapped content (e.g. `DataContent` state) with no diagnostic
 
 **Target repo:** `ag-ui-protocol/ag-ui`
 **Area:** .NET SDK — `AGUI.Server`
-**Severity:** High — the shared-state and predictive-state scenarios silently do nothing.
+**Severity:** Medium — state-emitting agents can produce *nothing* with no error, which is hard to diagnose.
 
-## Describe the bug
+## Summary
 
-When a Microsoft Agent Framework agent emits shared state as an `Microsoft.Extensions.AI.DataContent`
-with media type `application/json` (a full snapshot) or `application/json-patch+json` (a delta),
-`AGUI.Server`'s `ChatResponseUpdate` → AG-UI event conversion never turns it into a `STATE_SNAPSHOT`
-or `STATE_DELTA` event. The content is **silently dropped** — no state event reaches the client and
-no diagnostic is produced.
+`AGUI.Server`'s `ChatResponseUpdate` → AG-UI event conversion silently discards any content type it
+doesn't recognize. In particular, shared state emitted as a `Microsoft.Extensions.AI.DataContent`
+(`application/json` / `application/json-patch+json`) produces **no** `STATE_SNAPSHOT` / `STATE_DELTA`
+and **no** warning — the update just vanishes.
 
-State is only emitted when either:
-
-- `ChatResponseUpdate.RawRepresentation` is an AG-UI `BaseEvent` (e.g. `StateSnapshotEvent` /
-  `StateDeltaEvent`), or
-- a tool result is mapped via `AGUIStreamOptions.MapResultAsStateSnapshot(...)` /
-  `MapResultAsStateDelta(...)`.
+To be clear about scope: **I'm not claiming `DataContent` *should* map to a state event.** The shipped
+contract for state appears to be `ChatResponseUpdate.RawRepresentation = StateSnapshotEvent /
+StateDeltaEvent` (or `AGUIStreamOptions.MapResultAsStateSnapshot(...)`), and that works. The ask is
+about the **silent** part: dropping unmapped content with no diagnostic is a DX trap, especially
+because the repo's own MAF example still uses the older `DataContent` pattern (below), so a developer
+following it sees an agent that "does nothing" with no clue why.
 
 ## Root cause
 
 In `sdks/dotnet/src/AGUI.Server/ChatResponseUpdateAGUIExtensions.cs`, the per-content `switch`
-(around line 205) handles `TextReasoningContent`, `TextContent`, `FunctionCallContent`,
-`FunctionResultContent`, `ToolApprovalRequestContent`, and `InterruptRequestContent`. There is **no
-`DataContent` case**. The `default` arm only consults `options.InvokeInterruptMappers(content)`; if
-no interrupt mapper matches (the normal case for state), the content is discarded.
+(~line 205) handles `TextReasoningContent`, `TextContent`, `FunctionCallContent`,
+`FunctionResultContent`, `ToolApprovalRequestContent`, and `InterruptRequestContent`. The `default`
+arm only consults `options.InvokeInterruptMappers(content)`; anything else (including `DataContent`)
+is dropped with no log.
 
-## Evidence — the repo's own MAF example relies on the dropped pattern
+## Why this bites people
 
-`integrations/microsoft-agent-framework/dotnet/examples/AGUIDojoServer` emits state exactly this way,
-so its state scenarios never produce STATE events with `AGUI.Server` 0.0.4:
+The `AGUIDojoServer` MAF example in this repo emits state the old way and therefore produces no STATE
+events against the shipped packages:
 
-- `SharedState/SharedStateAgent.cs:86` → `Contents = [new DataContent(stateBytes, "application/json")]`
-- `PredictiveStateUpdates/PredictiveStateUpdatesAgent.cs:81` → `new DataContent(stateBytes, "application/json")`
-- `AgenticUI/AgenticUIAgent.cs:58,62` → `new DataContent(bytes, "application/json")` / `"application/json-patch+json"`
+- `SharedState/SharedStateAgent.cs` — reads input state from `AdditionalProperties["ag_ui_state"]`
+  and emits `new DataContent(stateBytes, "application/json")`.
+- `PredictiveStateUpdates/PredictiveStateUpdatesAgent.cs:81`, `AgenticUI/AgenticUIAgent.cs:58,62` —
+  same `DataContent` emission.
 
-## Steps to reproduce
+That example is pinned to `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` **1.0.0-preview.251110.1** and
+uses the removed `AddAGUI`/`MapAGUI` API and the old `ag_ui_state` input key — i.e. it reflects an
+**older, superseded state contract**, not the shipped one. (Tracked separately as the "stale example"
+issue.) So this isn't proof of a regression; it's why the silent drop is easy to hit.
 
-1. Map an agent whose streamed `ChatResponseUpdate` has
-   `Contents = [ new DataContent(Encoding.UTF8.GetBytes(json), "application/json") ]`.
-2. `POST` a `RunAgentInput` and read the SSE stream.
-3. **Actual:** the stream contains no `STATE_SNAPSHOT` event; the JSON is dropped.
-4. **Works instead:** set `update.RawRepresentation = new StateSnapshotEvent { Snapshot = ... }`
-   (or use `MapResultAsStateSnapshot`) and the `STATE_SNAPSHOT` is emitted.
+## Suggested resolution (pick one)
 
-## Expected behavior
-
-Either:
-
-- **(preferred)** map `DataContent` with `application/json` → `STATE_SNAPSHOT` and
-  `application/json-patch+json` → `STATE_DELTA` (the pattern the MAF examples already use), **or**
-- if `DataContent` is intentionally unsupported, emit a diagnostic/warning instead of silently
-  dropping it, and fix the MAF examples (see companion issue) to use a supported pattern.
+- **Preferred:** when an update carries content the converter can't map (e.g. a `DataContent`), emit a
+  debug/warning diagnostic (`ILogger`) — e.g. *"AG-UI: dropping unmapped content of type X; emit state
+  via RawRepresentation = StateSnapshotEvent or MapResultAsStateSnapshot"*. That turns a silent no-op
+  into a discoverable one.
+- **Optional:** additionally accept `DataContent` with `application/json` → `STATE_SNAPSHOT` and
+  `application/json-patch+json` → `STATE_DELTA` as a convenience, matching the pattern the older
+  examples used. (Design call for the maintainers — not asserting this is required.)
+- Either way, update the MAF example to the shipped contract (companion "stale example" issue).
 
 ## Environment
 
@@ -62,5 +60,6 @@ Either:
 
 ## Notes
 
-Verified by building an agent both ways against the shipped packages: `DataContent` → no STATE
-event; `RawRepresentation = StateSnapshotEvent` → STATE_SNAPSHOT emitted and rendered client-side.
+Verified against the shipped packages: `DataContent(application/json)` → no STATE event, no log;
+`RawRepresentation = new StateSnapshotEvent { Snapshot = ... }` → `STATE_SNAPSHOT` emitted and
+rendered client-side.
