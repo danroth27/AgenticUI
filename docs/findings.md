@@ -50,6 +50,19 @@ Built against:
 >   draft comment prepared, do not duplicate.
 > - **HITL doc/sample hackery** → fixed: MAF docs PR #430 rewrote the HITL page to the idiomatic
 >   pattern, and MAF sample PR #7295 simplifies Step04 (removed ~470 lines of approval middleware).
+> - **`WithInMemorySessionStore()` throws HTTP 500 by default** → `WithInMemorySessionStore()` defaults
+>   to `withIsolation: true`, which requires a `SessionIsolationKeyProvider`; without one the AG-UI
+>   endpoint returns 500 (`InvalidOperationException: Session isolation key is required...`). Found while
+>   verifying Javier's idiomatic getting-started wiring. Docs now use `WithInMemorySessionStore(withIsolation: false)`
+>   for single-user servers. **Worth raising with Javier** (the draft snippet and possibly the default
+>   are a footgun for the getting-started path).
+>
+> **Idiomatic-pattern reconciliation (Javier's draft merged, 2026-07-23):** the .NET AG-UI state docs
+> and the AgenticUI sample now use the declarative `AGUIStreamOptions.MapResultAsStateSnapshot /
+> MapResultAsStateDelta / MapCall` (+ `MapAGUIServer(...).WithMetadata`) pattern instead of custom
+> `DelegatingAIAgent` + `RawRepresentation`. All state scenarios verified end-to-end (STATE_SNAPSHOT /
+> STATE_DELTA emitted). The lower-level `RawRepresentation = StateSnapshotEvent` still works but is no
+> longer the documented idiom.
 
 ### 1. (SDK/sample) State emitted as `DataContent` is silently dropped by `AGUI.Server`
 
