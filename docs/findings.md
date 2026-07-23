@@ -27,21 +27,18 @@ Built against:
 ## Bugs / issues found
 
 > **Upstream tracking status (checked 2026-07-23).** Each finding was mapped to the repo that owns
-> the code and checked for existing issues. Full drafts and the duplicate-check table are in
-> [`proposed-issues/`](proposed-issues/README.md).
+> the code and checked for existing issues. Detailed drafts are kept as separate working notes
+> (outside this sample repo).
 >
 > - **Bug #1 (DataContent state dropped)** → **RESOLVED, not a bug.** Javier confirmed (2026-07-23)
 >   that emitting state as `DataContent("application/json")` was a pre-public-API hack and is
 >   intentionally unsupported; the contract is `RawRepresentation = StateSnapshotEvent` (which our
->   sample and docs already use). See
->   [`proposed-issues/ag-ui-01-RESOLVED-datacontent-intended.md`](proposed-issues/ag-ui-01-RESOLVED-datacontent-intended.md).
->   The remaining actionable item is the stale `AGUIDojoServer` sample that still uses the removed hack.
-> - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** →
->   [draft issue](proposed-issues/ag-ui-02-dojo-example-stale.md) (pinned to an old preview; uses the
->   removed `AddAGUI`/`MapAGUI`).
+>   sample and docs already use). The remaining actionable item is the stale `AGUIDojoServer` sample
+>   that still uses the removed hack.
+> - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** → draft issue
+>   prepared (pinned to an old preview; uses the removed `AddAGUI`/`MapAGUI` and old state contract).
 > - **Bug #3 (`UIActionBlock` no auto-invoke)** → `dotnet/aspnetcore` (Blazor AI components, PR #67673).
->   **Fixed in our components copy** and verified end-to-end; drafted as a
->   [PR comment](proposed-issues/aspnetcore-67673-comment.md), not an issue.
+>   **Fixed in our components copy** and verified end-to-end; drafted as a PR comment, not an issue.
 > - **Bug #2 (client state not auto-sent)** → **reframed as an API-shape gap, not an SDK bug.**
 >   `AGUIChatClient` *does* forward `RunAgentInput.State`/`ParentRunId` when set via
 >   `RawRepresentationFactory` (confirmed by ag-ui#2151); the gap is that the components have an
@@ -50,7 +47,7 @@ Built against:
 >   [dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449) — do not duplicate.
 > - **Workflow-over-AG-UI events not surfaced** → already open at
 >   [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494) —
->   [draft comment](proposed-issues/agent-framework-2494-comment.md), do not duplicate.
+>   draft comment prepared, do not duplicate.
 > - **HITL doc/sample hackery** → fixed: MAF docs PR #430 rewrote the HITL page to the idiomatic
 >   pattern, and MAF sample PR #7295 simplifies Step04 (removed ~470 lines of approval middleware).
 
@@ -60,9 +57,9 @@ Built against:
 > was a hack from before the public API existed; it is intentionally unsupported now. The supported
 > contract is `RawRepresentation = StateSnapshotEvent` (below), which our sample and the docs already
 > use. So there's nothing to fix in the SDK — the only actionable item is the **stale `AGUIDojoServer`
-> sample** in `ag-ui-protocol/ag-ui`, which still emits the removed `DataContent` pattern (see
-> `proposed-issues/ag-ui-02-dojo-example-stale.md`). An optional, low-priority DX idea is for
-> `AGUI.Server` to *log a warning* when it drops unmapped content instead of failing silently.
+> sample** in `ag-ui-protocol/ag-ui`, which still emits the removed `DataContent` pattern. An optional,
+> low-priority DX idea is for `AGUI.Server` to *log a warning* when it drops unmapped content instead
+> of failing silently.
 
 **Original severity as reported: high** — it makes the state scenarios appear to do nothing.
 
@@ -135,9 +132,8 @@ default renderer, so "frontend tools" work without bespoke wiring.
 > **Update (2026-07-23): fixed in our components copy.** The engine (`AgentContext`) now auto-invokes
 > `UIActionBlock`s and only parks at `AwaitingInput` for blocks that need a human, so the
 > `UIActionRunner` glue is gone. Verified end-to-end (frontend tool auto-runs and the run resumes;
-> human approval still stalls until approved). Proposed upstream as a
-> [PR #67673 comment](proposed-issues/aspnetcore-67673-comment.md); see the components copy's
-> `NOTICE.md` → *Local modifications*.
+> human approval still stalls until approved). Proposed upstream as a PR #67673 comment; see the
+> components copy's `NOTICE.md` → *Local modifications*.
 
 ### 4. (ag-ui repo) Stale MAF integration example uses the old API
 
