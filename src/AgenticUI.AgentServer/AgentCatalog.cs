@@ -115,17 +115,40 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
             }
         });
 
-        return new AgenticUIAgent(baseAgent, this._jsonOptions);
+        // The create_plan / update_plan_step tool results are turned into STATE_SNAPSHOT / STATE_DELTA
+        // events declaratively via AGUIStreamOptions in Program.cs — no custom agent required.
+        return baseAgent;
     }
 
     /// <summary>Shared state — structured recipe kept in sync between agent and client.</summary>
     public AIAgent CreateSharedState()
     {
-        var baseAgent = this._chatClient.AsAIAgent(
-            name: "SharedStateAgent",
-            description: "An agent that keeps a structured recipe in sync with the client.");
+        AITool generateRecipe = AIFunctionFactory.Create(
+            RecipeTools.GenerateRecipe,
+            name: "generate_recipe",
+            description: "Generate or update the shared recipe and display it to the user.",
+            AgentServerSerializerContext.Default.Options);
 
-        return new SharedStateAgent(baseAgent, this._jsonOptions);
+        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        {
+            Name = "SharedStateAgent",
+            Description = "An agent that keeps a structured recipe in sync with the client.",
+            ChatOptions = new ChatOptions
+            {
+                Instructions = """
+                    You are a helpful recipe assistant that maintains a shared recipe state with the user.
+
+                    IMPORTANT:
+                    - When the user asks you to create, change, or improve a recipe, call the `generate_recipe`
+                      tool with a COMPLETE recipe: a title, skill_level, cooking_time, special_preferences, the
+                      full list of ingredients (each with an icon, name and amount) and the step-by-step
+                      instructions.
+                    - Always include every ingredient the recipe needs, keeping any the user already added.
+                    - When the user only asks a question about the recipe, answer in plain text and do NOT call the tool.
+                    """,
+                Tools = [generateRecipe],
+            }
+        });
     }
 
     /// <summary>Predictive state updates — a document streamed progressively as it is written.</summary>

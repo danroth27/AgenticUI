@@ -1,4 +1,5 @@
 using AgenticUI.AgentServer;
+using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
@@ -30,8 +31,12 @@ app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
 app.MapAGUIServer("/backend_tool_rendering", agents.CreateBackendToolRendering());
 app.MapAGUIServer("/human_in_the_loop", agents.CreateHumanInTheLoop());
 app.MapAGUIServer("/tool_based_generative_ui", agents.CreateToolBasedGenerativeUI());
-app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI());
-app.MapAGUIServer("/shared_state", agents.CreateSharedState());
+app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
+    .WithMetadata(new AGUIStreamOptions()
+        .MapResultAsStateSnapshot("create_plan")   // full plan -> STATE_SNAPSHOT
+        .MapResultAsStateDelta("update_plan_step")); // JSON Patch -> STATE_DELTA
+app.MapAGUIServer("/shared_state", agents.CreateSharedState())
+    .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
 app.MapAGUIServer("/predictive_state_updates", agents.CreatePredictiveStateUpdates());
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 app.MapAGUIServer("/workflow", agents.CreateWorkflow());
