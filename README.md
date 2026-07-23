@@ -7,8 +7,6 @@ in-progress Blazor AI components. [.NET Aspire](https://learn.microsoft.com/dotn
 wires the two together, and everything runs on **free [GitHub Models](https://github.com/marketplace/models)** —
 no paid Azure or OpenAI resources required.
 
-![Scenarios: agentic chat, backend tools, frontend tools, human-in-the-loop, shared state, predictive state, agentic generative UI](docs/scenarios.png)
-
 ## What it demonstrates
 
 | Scenario | AG-UI feature | Endpoint |
