@@ -30,12 +30,12 @@ Built against:
 > the code and checked for existing issues. Full drafts and the duplicate-check table are in
 > [`proposed-issues/`](proposed-issues/README.md).
 >
-> - **Bug #1 (DataContent state dropped)** → `ag-ui-protocol/ag-ui` (`AGUI.Server`). **Not tracked** →
->   [draft issue](proposed-issues/ag-ui-01-datacontent-state-dropped.md). Reframed: the shipped state
->   contract is `RawRepresentation = StateSnapshotEvent` / `MapResultAsStateSnapshot` (which works);
->   the ask is that unmapped content (e.g. `DataContent`) is dropped **silently** with no diagnostic.
->   The repo's `AGUIDojoServer` example still uses the old `DataContent`/`ag_ui_state` contract, which
->   is why it's easy to hit.
+> - **Bug #1 (DataContent state dropped)** → **RESOLVED, not a bug.** Javier confirmed (2026-07-23)
+>   that emitting state as `DataContent("application/json")` was a pre-public-API hack and is
+>   intentionally unsupported; the contract is `RawRepresentation = StateSnapshotEvent` (which our
+>   sample and docs already use). See
+>   [`proposed-issues/ag-ui-01-RESOLVED-datacontent-intended.md`](proposed-issues/ag-ui-01-RESOLVED-datacontent-intended.md).
+>   The remaining actionable item is the stale `AGUIDojoServer` sample that still uses the removed hack.
 > - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** →
 >   [draft issue](proposed-issues/ag-ui-02-dojo-example-stale.md) (pinned to an old preview; uses the
 >   removed `AddAGUI`/`MapAGUI`).
@@ -56,7 +56,15 @@ Built against:
 
 ### 1. (SDK/sample) State emitted as `DataContent` is silently dropped by `AGUI.Server`
 
-**Severity: high** — it makes the state scenarios appear to do nothing.
+> **RESOLVED — not an SDK bug (Javier, 2026-07-23).** Emitting state as `DataContent("application/json")`
+> was a hack from before the public API existed; it is intentionally unsupported now. The supported
+> contract is `RawRepresentation = StateSnapshotEvent` (below), which our sample and the docs already
+> use. So there's nothing to fix in the SDK — the only actionable item is the **stale `AGUIDojoServer`
+> sample** in `ag-ui-protocol/ag-ui`, which still emits the removed `DataContent` pattern (see
+> `proposed-issues/ag-ui-02-dojo-example-stale.md`). An optional, low-priority DX idea is for
+> `AGUI.Server` to *log a warning* when it drops unmapped content instead of failing silently.
+
+**Original severity as reported: high** — it makes the state scenarios appear to do nothing.
 
 The MAF AG-UI "dojo" samples
 (`dotnet/samples/05-end-to-end/AGUIClientServer/AGUIDojoServer`) emit shared/predictive/plan state by

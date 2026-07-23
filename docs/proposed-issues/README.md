@@ -10,8 +10,20 @@ issues to avoid duplicates (searched 2026-07-23).
 
 | # | File | Target repo | Kind |
 |---|------|-------------|------|
-| 1 | [`ag-ui-01-datacontent-state-dropped.md`](ag-ui-01-datacontent-state-dropped.md) | `ag-ui-protocol/ag-ui` | Bug (medium) — silent drop of `DataContent` state ([repro repo](https://github.com/danroth27/agui-datacontent-state-repro)) |
 | 2 | [`ag-ui-02-dojo-example-stale.md`](ag-ui-02-dojo-example-stale.md) | `ag-ui-protocol/ag-ui` | Bug / chore (can be a PR) |
+
+## Resolved without filing
+
+- **ag-ui-01 (`DataContent` state dropped) — NOT a bug; confirmed intended (Javier, 2026-07-23).**
+  Emitting shared state as `DataContent("application/json")` was a pre-public-API hack and is
+  intentionally unsupported now. The supported contract is to emit a chat update whose
+  `RawRepresentation` is a `StateSnapshotEvent` (which our sample and the docs already use). So we
+  will **not** file the state-drop as a bug. The real, actionable item is the **stale
+  `AGUIDojoServer` sample** (still uses the removed hack) — see `ag-ui-02` and todo `update-agui-dojo`.
+  - Optional low-priority DX idea (not filing unless Javier wants it): have `AGUI.Server` log a
+    warning when it drops unmapped content, so the removed pattern fails loudly rather than silently.
+  - Repro repo `danroth27/agui-datacontent-state-repro` is now a *correct-pattern demo* rather than a
+    bug repro — decide whether to keep (as a mini how-to) or delete.
 
 ## Already tracked — comment, do NOT open a duplicate
 
