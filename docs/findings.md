@@ -156,3 +156,32 @@ Verified-and-documented C# scenarios (tested, not guessed): agentic chat, backen
 human-in-the-loop approval (approve→resume), **selective approval** (mixed approved/unapproved tools in
 one turn), shared state, predictive state, agentic generative UI, reasoning, **workflow-as-agent**, and
 the minimal-body `curl` test.
+
+## C# developer-experience issues to track (vs Python)
+
+Found while auditing the docs for idiomatic patterns. These are ergonomics/complexity gaps, not doc bugs:
+
+1. **HITL sample teaches obsolete hackery.** The MAF Step04 `Human-in-the-Loop` sample (and, until this
+   PR, the Learn docs) implement ~400 lines of custom `request_approval` middleware
+   (`ServerFunctionApprovalAgent` + `ServerFunctionApprovalClientAgent`) to translate approvals over the
+   wire. **This is no longer necessary** — `AGUIChatClient` converts an outgoing `ToolApprovalResponseContent`
+   into the AG-UI `Resume` mechanism, and `AGUI.Server` converts `RunAgentInput.Resume` back into the
+   approval pair. **Verified**: a raw `AGUIChatClient` console client does the full round-trip idiomatically
+   in ~30 lines (wrap tool + `MapAGUIServer` on the server; `CreateResponse(approved)` + resume on the
+   client). *Recommendation: rewrite the Step04 sample to the idiomatic pattern; it currently teaches a
+   workaround as if it were the required approach.* (The docs now show the idiomatic pattern.)
+
+2. **Approval flow requires `#pragma warning disable MEAI001`.** `ApprovalRequiredAIFunction`,
+   `ToolApprovalRequestContent`, and `ToolApprovalResponseContent` are all evaluation-only, so idiomatic
+   approval code can't avoid the pragma. Rough edge for a core scenario.
+
+3. **Client resume boilerplate.** To resume a run with thread continuity, the stateless `AGUIChatClient`
+   requires the caller to hand-set `RunAgentInput.ThreadId`/`ParentRunId` via
+   `ChatOptions.RawRepresentationFactory`. Python's client handles continuation more transparently. A
+   first-class "resume/continue" helper on the .NET client would remove this boilerplate.
+
+4. **Shared-state input requires manual `RunAgentInput.State` plumbing** (also via
+   `RawRepresentationFactory`), and the Blazor `UIAgent<TState>` doesn't wire it automatically (bug #2).
+   Python surfaces shared state more directly.
+
+5. **No approval "modes"** (see limitations list) — only always/never; no `conditional`.
