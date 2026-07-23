@@ -17,11 +17,10 @@ namespace AgenticUI.AgentServer;
 /// Builds the <see cref="AIAgent"/> instances for each AG-UI demo scenario. Each agent is mapped to
 /// its own AG-UI endpoint in <c>Program.cs</c> via <c>MapAGUIServer</c>.
 /// </summary>
-public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChatClient, JsonSerializerOptions jsonOptions)
+public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChatClient)
 {
     private readonly ChatClient _chatClient = chatClient;
     private readonly ChatClient _reasoningChatClient = reasoningChatClient;
-    private readonly JsonSerializerOptions _jsonOptions = jsonOptions;
 
     /// <summary>Basic streaming chat — text in, streamed text out.</summary>
     public AIAgent CreateAgenticChat() =>
@@ -151,42 +150,6 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
         });
     }
 
-    /// <summary>Predictive state updates — a document streamed progressively as it is written.</summary>
-    public AIAgent CreatePredictiveStateUpdates()
-    {
-        var baseAgent = this._chatClient.AsAIAgent(new ChatClientAgentOptions
-        {
-            Name = "PredictiveStateUpdatesAgent",
-            Description = "A document editor that streams the document as it writes.",
-            ChatOptions = new ChatOptions
-            {
-                Instructions = """
-                    You are a document editor assistant. When asked to write or edit content:
-
-                    IMPORTANT:
-                    - Use the `write_document` tool with the full document text in Markdown format
-                    - Format the document extensively so it's easy to read
-                    - You can use all kinds of markdown (headings, lists, bold, etc.)
-                    - However, do NOT use italic or strike-through formatting
-                    - You MUST write the full document, even when changing only a few words
-                    - When making edits to the document, try to make them minimal - do not change every word
-                    - Keep stories SHORT!
-
-                    After the user confirms the changes, provide a brief summary of what you wrote.
-                    """,
-                Tools = [
-                    AIFunctionFactory.Create(
-                        WriteDocument,
-                        name: "write_document",
-                        description: "Write a document. Use markdown formatting to format the document.",
-                        AgentServerSerializerContext.Default.Options)
-                ]
-            }
-        });
-
-        return new PredictiveStateUpdatesAgent(baseAgent, this._jsonOptions);
-    }
-
     /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
     public AIAgent CreateReasoning()
     {
@@ -251,6 +214,4 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
 
     private static string TransferFunds(string toAccount, decimal amount) =>
         $"Transferred {amount:C} to account {toAccount}.";
-
-    private static string WriteDocument(string document) => "Document written successfully";
 }

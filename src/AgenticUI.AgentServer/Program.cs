@@ -1,6 +1,8 @@
 using AgenticUI.AgentServer;
+using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using Microsoft.Extensions.AI;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
 
@@ -24,7 +26,7 @@ var githubModels = GitHubModels.ReadOptions(app.Configuration);
 var chatClient = GitHubModels.CreateChatClient(githubModels);
 var reasoningChatClient = GitHubModels.CreateChatClient(githubModels, githubModels.ReasoningModel);
 var jsonOptions = app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
-var agents = new AgentCatalog(chatClient, reasoningChatClient, jsonOptions);
+var agents = new AgentCatalog(chatClient, reasoningChatClient);
 
 // Map one AG-UI endpoint per scenario. Each is an HTTP POST that streams AG-UI events (SSE).
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
@@ -37,7 +39,9 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
         .MapResultAsStateDelta("update_plan_step")); // JSON Patch -> STATE_DELTA
 app.MapAGUIServer("/shared_state", agents.CreateSharedState())
     .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
-app.MapAGUIServer("/predictive_state_updates", agents.CreatePredictiveStateUpdates());
+// Predictive state updates use AGUIStreamOptions.MapCall via a manual pipeline (no function
+// invocation), so the endpoint is mapped directly rather than through MapAGUIServer.
+app.MapPredictiveStateUpdates("/predictive_state_updates", chatClient.AsIChatClient(), jsonOptions);
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 app.MapAGUIServer("/workflow", agents.CreateWorkflow());
 app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
