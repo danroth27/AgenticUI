@@ -26,6 +26,31 @@ Built against:
 
 ## Bugs / issues found
 
+> **Upstream tracking status (checked 2026-07-23).** Each finding was mapped to the repo that owns
+> the code and checked for existing issues. Full drafts and the duplicate-check table are in
+> [`proposed-issues/`](proposed-issues/README.md).
+>
+> - **Bug #1 (DataContent state dropped)** → `ag-ui-protocol/ag-ui` (`AGUI.Server`). **Not tracked** →
+>   [draft issue](proposed-issues/ag-ui-01-datacontent-state-dropped.md). The repo's own
+>   `AGUIDojoServer` example relies on the dropped pattern.
+> - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** →
+>   [draft issue](proposed-issues/ag-ui-02-dojo-example-stale.md) (pinned to an old preview; uses the
+>   removed `AddAGUI`/`MapAGUI`).
+> - **Bug #3 (`UIActionBlock` no auto-invoke)** → `dotnet/aspnetcore` (Blazor AI components, PR #67673).
+>   **Fixed in our components copy** and verified end-to-end; drafted as a
+>   [PR comment](proposed-issues/aspnetcore-67673-comment.md), not an issue.
+> - **Bug #2 (client state not auto-sent)** → **reframed as an API-shape gap, not an SDK bug.**
+>   `AGUIChatClient` *does* forward `RunAgentInput.State`/`ParentRunId` when set via
+>   `RawRepresentationFactory` (confirmed by ag-ui#2151); the gap is that the components have an
+>   inbound `StateMapper` but no symmetric outbound hook. Covered in the PR comment.
+> - **No `conditional` approval mode** → already open at
+>   [dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449) — do not duplicate.
+> - **Workflow-over-AG-UI events not surfaced** → already open at
+>   [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494) —
+>   [draft comment](proposed-issues/agent-framework-2494-comment.md), do not duplicate.
+> - **HITL doc/sample hackery** → fixed: MAF docs PR #430 rewrote the HITL page to the idiomatic
+>   pattern, and MAF sample PR #7295 simplifies Step04 (removed ~470 lines of approval middleware).
+
 ### 1. (SDK/sample) State emitted as `DataContent` is silently dropped by `AGUI.Server`
 
 **Severity: high** — it makes the state scenarios appear to do nothing.
@@ -95,6 +120,13 @@ But nothing invokes it by default, and `MessageListContext.RenderBlock` renders 
 
 **Recommendation:** consider auto-invoking `UIActionBlock`s (like backend tools) and/or shipping a
 default renderer, so "frontend tools" work without bespoke wiring.
+
+> **Update (2026-07-23): fixed in our components copy.** The engine (`AgentContext`) now auto-invokes
+> `UIActionBlock`s and only parks at `AwaitingInput` for blocks that need a human, so the
+> `UIActionRunner` glue is gone. Verified end-to-end (frontend tool auto-runs and the run resumes;
+> human approval still stalls until approved). Proposed upstream as a
+> [PR #67673 comment](proposed-issues/aspnetcore-67673-comment.md); see the components copy's
+> `NOTICE.md` → *Local modifications*.
 
 ### 4. (ag-ui repo) Stale MAF integration example uses the old API
 
