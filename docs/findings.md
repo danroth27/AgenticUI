@@ -43,8 +43,11 @@ Built against:
 >   `AGUIChatClient` *does* forward `RunAgentInput.State`/`ParentRunId` when set via
 >   `RawRepresentationFactory` (confirmed by ag-ui#2151); the gap is that the components have an
 >   inbound `StateMapper` but no symmetric outbound hook. Covered in the PR comment.
-> - **No `conditional` approval mode** → already open at
->   [dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449) — do not duplicate.
+> - **Conditional approval** → **resolved**: MAF supports argument-based conditional approval via
+>   `AIAgentBuilder.UseToolApproval` + `ToolApprovalAgentOptions.AutoApprovalRules`
+>   ([agent-framework#6335](https://github.com/microsoft/agent-framework/pull/6335), shipped in 1.15.0,
+>   verified end-to-end over AG-UI). The MEAI `ApprovalRequiredAIFunction` primitive itself stays binary
+>   ([dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449)). See finding #1.
 > - **Workflow-over-AG-UI events not surfaced** → already open at
 >   [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494) —
 >   draft comment prepared, do not duplicate.
@@ -181,12 +184,24 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
 Found while bringing the C# Learn docs to parity with the Python docs. Each was verified against actual
 .NET behavior (see method):
 
-1. **No tool "approval modes."** Python has `@tool(approval_mode="always_require" | "never_require" |
-   "conditional")`. .NET's `ApprovalRequiredAIFunction` has a single constructor `ctor(AIFunction)` —
-   always require. "Never" = don't wrap; there is **no `conditional` mode**. (Verified via reflection on
-   `Microsoft.Extensions.AI.Abstractions`; the `*ApprovalMode` types are for hosted MCP tools, a
-   different feature.) The C# docs now describe the wrap/don't-wrap model instead of porting the Python
-   modes.
+1. **Conditional approval — supported via `UseToolApproval` + auto-approval rules (updated).**
+   The low-level MEAI primitive `ApprovalRequiredAIFunction` is still binary — a single `ctor(AIFunction)`
+   (always require); "never" = don't wrap; no per-invocation mode on the function itself
+   (tracked for that layer by [dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449)).
+   **However, MAF closes the practical gap** at the agent layer: wrap the tool in
+   `ApprovalRequiredAIFunction`, then layer `AIAgentBuilder.UseToolApproval(new ToolApprovalAgentOptions {
+   AutoApprovalRules = [...] })`. Each rule gets a `ToolAutoApprovalRuleContext` exposing the pending
+   `FunctionCallContent` (name + **arguments**) and returns `true` to auto-approve — evaluated after
+   standing rules, before prompting. This gives Python's `conditional` behavior, just composed as
+   heuristic auto-approval middleware rather than a per-tool mode enum. Added in
+   [agent-framework#6335](https://github.com/microsoft/agent-framework/pull/6335)
+   (closes [#6083](https://github.com/microsoft/agent-framework/issues/6083)); shipped in
+   `Microsoft.Agents.AI` **1.15.0**. **Verified end-to-end over AG-UI** (GitHub Models): a `$500`
+   `transfer_funds` call was auto-approved and streamed its `TOOL_CALL_RESULT` with no interrupt, while a
+   `$5,000` call raised `RUN_FINISHED` `outcome.type="interrupt"` for the user to confirm — from a single
+   tool registration. Documented in `human-in-the-loop.md` under **Conditional Approval**.
+   *Security note:* auto-approval rules can match by tool name alone, so scope each rule to the name **and**
+   the specific arguments.
 
 2. **Workflows over AG-UI stream agent output only, not workflow events.** A workflow converted with
    `AgentWorkflowBuilder.BuildSequential(...).AsAIAgent()` and mapped with `MapAGUIServer` streams each
