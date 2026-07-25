@@ -221,6 +221,15 @@ Found while bringing the C# Learn docs to parity with the Python docs. Each was 
 5. **Blazor `UIAgent<TState>` / `AGUIChatClient` don't auto-send client state** (`RunAgentInput.State`);
    a client must set it manually via `ChatOptions.RawRepresentationFactory` (see bug #2).
 6. **`UIActionBlock` has no default renderer/auto-invoke** (see bug #3).
+7. **No declarative predictive state updates** (streaming tool *arguments* into state). C# has declarative
+   helpers for tool *results* (`AGUIStreamOptions.MapResultAsStateSnapshot` / `MapResultAsStateDelta`), but
+   the predictive case has no declarative equivalent of Python's `predict_state_config` — you must
+   hand-roll the low-level `MapCall(...)` pipeline (~140 lines: read the streamed arg, emit snapshots/deltas,
+   complete the call, inject `confirm_changes`, plus manual endpoint wiring without function invocation).
+   So the C# predictive docs use a manual document-editor example that can't mirror Python's concise recipe
+   example. Tracked by [ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245) (SDK declarative
+   mapping) and the broader [agent-framework#4177](https://github.com/microsoft/agent-framework/issues/4177)
+   (`StateBag` auto-emission + arg→state mapping; agent-framework core).
 
 Verified-and-documented C# scenarios (tested, not guessed): agentic chat, backend tools, frontend tools,
 human-in-the-loop approval (approve→resume), **selective approval** (mixed approved/unapproved tools in
