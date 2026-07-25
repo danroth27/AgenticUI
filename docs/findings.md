@@ -254,10 +254,12 @@ Found while auditing the docs for idiomatic patterns. These are ergonomics/compl
    `ToolApprovalRequestContent`, and `ToolApprovalResponseContent` are all evaluation-only, so idiomatic
    approval code can't avoid the pragma. Rough edge for a core scenario.
 
-3. **Client resume boilerplate.** To resume a run with thread continuity, the stateless `AGUIChatClient`
-   requires the caller to hand-set `RunAgentInput.ThreadId`/`ParentRunId` via
-   `ChatOptions.RawRepresentationFactory`. Python's client handles continuation more transparently. A
-   first-class "resume/continue" helper on the .NET client would remove this boilerplate.
+3. **Client resume — RESOLVED (this was our over-engineering, not an API gap).** Approve→resume works
+   transparently: reuse the same `AgentSession` and send the `ToolApprovalResponseContent` back —
+   `AGUIChatClient` auto-converts it into the AG-UI `Resume` payload and recovers the thread id itself,
+   so **no `RawRepresentationFactory` / `ThreadId` / `ParentRunId` plumbing is needed**. **Verified
+   end-to-end** against a live HITL endpoint (approve → the tool runs). The earlier HITL sample/doc
+   carried that plumbing defensively; it has been removed from the docs.
 
 4. **Shared-state input requires manual `RunAgentInput.State` plumbing** (also via
    `RawRepresentationFactory`), and the Blazor `UIAgent<TState>` doesn't wire it automatically (bug #2).
