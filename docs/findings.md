@@ -199,7 +199,10 @@ Found while bringing the C# Learn docs to parity with the Python docs. Each was 
    `Microsoft.Agents.AI` **1.15.0**. **Verified end-to-end over AG-UI** (GitHub Models): a `$500`
    `transfer_funds` call was auto-approved and streamed its `TOOL_CALL_RESULT` with no interrupt, while a
    `$5,000` call raised `RUN_FINISHED` `outcome.type="interrupt"` for the user to confirm — from a single
-   tool registration. Documented in `human-in-the-loop.md` under **Conditional Approval**.
+   tool registration. Tool approval (always/never, selective, conditional) is a general Agent
+   Framework capability, so the C# docs reference the generic `agents/tools/tool-approval` page rather
+   than duplicating it in the AG-UI HITL page; conditional approval is missing from that generic page
+   today, tracked by [semantic-kernel-docs#434](https://github.com/MicrosoftDocs/semantic-kernel-docs/issues/434).
    *Security note:* auto-approval rules can match by tool name alone, so scope each rule to the name **and**
    the specific arguments.
 
