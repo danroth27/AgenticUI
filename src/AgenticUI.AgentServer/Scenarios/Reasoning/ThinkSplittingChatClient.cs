@@ -1,38 +1,36 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
 namespace AgenticUI.AgentServer.Scenarios.Reasoning;
 
 /// <summary>
 /// Wraps a reasoning model (e.g. DeepSeek-R1) that emits its chain of thought inline as
-/// <c>&lt;think&gt;…&lt;/think&gt;</c> in the message text. This wrapper splits that thinking out and
+/// <c>&lt;think&gt;…&lt;/think&gt;</c> in the message text. This client splits that thinking out and
 /// re-emits it as <see cref="TextReasoningContent"/>, which AGUI.Server turns into AG-UI
 /// <c>REASONING_*</c> events and the Blazor AI components render as a collapsible "thought process".
 /// </summary>
-[SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by the agent catalog.")]
-internal sealed class ReasoningAgent : DelegatingAIAgent
+/// <remarks>
+/// This must sit <em>below</em> the agent, as an <see cref="IChatClient"/> decorator. The agent layer
+/// (<c>AsAIAgent</c> in Microsoft.Agents.AI 1.15.0) strips <c>&lt;think&gt;…&lt;/think&gt;</c> out of the
+/// response text and discards it, so a <c>DelegatingAIAgent</c> wrapper placed above the agent never
+/// sees the thinking and produces no reasoning content.
+/// </remarks>
+internal sealed class ThinkSplittingChatClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
 {
-    public ReasoningAgent(AIAgent innerAgent) : base(innerAgent)
-    {
-    }
-
-    protected override Task<AgentResponse> RunCoreAsync(IEnumerable<ChatMessage> messages, AgentSession? session = null, AgentRunOptions? options = null, CancellationToken cancellationToken = default)
-        => this.RunCoreStreamingAsync(messages, session, options, cancellationToken).ToAgentResponseAsync(cancellationToken);
-
-    protected override async IAsyncEnumerable<AgentResponseUpdate> RunCoreStreamingAsync(
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
-        AgentSession? session = null,
-        AgentRunOptions? options = null,
+        ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var splitter = new ThinkSplitter();
+        ChatResponseUpdate? last = null;
 
-        await foreach (var update in this.InnerAgent.RunStreamingAsync(messages, session, options, cancellationToken).ConfigureAwait(false))
+        await foreach (var update in base.GetStreamingResponseAsync(messages, options, cancellationToken)
+            .ConfigureAwait(false))
         {
+            last = update;
             var outContents = new List<AIContent>();
             foreach (var content in update.Contents)
             {
@@ -51,27 +49,26 @@ internal sealed class ReasoningAgent : DelegatingAIAgent
 
             if (outContents.Count > 0)
             {
-                yield return CloneWith(update, outContents);
+                update.Contents = outContents;
+                yield return update;
             }
         }
 
         var tail = splitter.Flush();
         if (tail.Count > 0)
         {
-            yield return new AgentResponseUpdate(ChatRole.Assistant,
-                [.. tail.Select(t => t.isReasoning ? (AIContent)new TextReasoningContent(t.text) : new TextContent(t.text))]);
+            // Reuse the last update's message identity: a tail update with no MessageId is treated as
+            // a brand-new assistant message and renders as a stray extra chat bubble.
+            yield return new ChatResponseUpdate(last?.Role ?? ChatRole.Assistant,
+                [.. tail.Select(t => t.isReasoning ? (AIContent)new TextReasoningContent(t.text) : new TextContent(t.text))])
+            {
+                MessageId = last?.MessageId,
+                ResponseId = last?.ResponseId,
+                AuthorName = last?.AuthorName,
+                CreatedAt = last?.CreatedAt,
+            };
         }
     }
-
-    private static AgentResponseUpdate CloneWith(AgentResponseUpdate source, IList<AIContent> contents) =>
-        new(source.Role ?? ChatRole.Assistant, contents)
-        {
-            MessageId = source.MessageId,
-            ResponseId = source.ResponseId,
-            CreatedAt = source.CreatedAt,
-            AuthorName = source.AuthorName,
-            AgentId = source.AgentId,
-        };
 
     /// <summary>Streaming splitter that separates <c>&lt;think&gt;…&lt;/think&gt;</c> from answer text.</summary>
     private sealed class ThinkSplitter
@@ -85,29 +82,29 @@ internal sealed class ReasoningAgent : DelegatingAIAgent
 
         public List<(bool isReasoning, string text)> Push(string chunk)
         {
-            _buffer += chunk;
+            this._buffer += chunk;
             var results = new List<(bool, string)>();
 
             while (true)
             {
-                string tag = _inThink ? Close : Open;
-                int idx = _buffer.IndexOf(tag, StringComparison.Ordinal);
+                string tag = this._inThink ? Close : Open;
+                int idx = this._buffer.IndexOf(tag, StringComparison.Ordinal);
                 if (idx >= 0)
                 {
                     if (idx > 0)
                     {
-                        results.Add((_inThink, _buffer.Substring(0, idx)));
+                        results.Add((this._inThink, this._buffer[..idx]));
                     }
-                    _buffer = _buffer.Substring(idx + tag.Length);
-                    _inThink = !_inThink;
+                    this._buffer = this._buffer[(idx + tag.Length)..];
+                    this._inThink = !this._inThink;
                     continue;
                 }
 
                 // No complete tag yet. Emit everything except a short tail that might begin a tag.
-                if (_buffer.Length > s_keep)
+                if (this._buffer.Length > s_keep)
                 {
-                    results.Add((_inThink, _buffer.Substring(0, _buffer.Length - s_keep)));
-                    _buffer = _buffer.Substring(_buffer.Length - s_keep);
+                    results.Add((this._inThink, this._buffer[..^s_keep]));
+                    this._buffer = this._buffer[^s_keep..];
                 }
                 break;
             }
@@ -118,10 +115,10 @@ internal sealed class ReasoningAgent : DelegatingAIAgent
         public List<(bool isReasoning, string text)> Flush()
         {
             var result = new List<(bool, string)>();
-            if (_buffer.Length > 0)
+            if (this._buffer.Length > 0)
             {
-                result.Add((_inThink, _buffer));
-                _buffer = string.Empty;
+                result.Add((this._inThink, this._buffer));
+                this._buffer = string.Empty;
             }
             return result;
         }

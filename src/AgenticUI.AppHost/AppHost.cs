@@ -5,7 +5,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 // The model has a sensible default and can be overridden with Parameters:github-model.
 var githubToken = builder.AddParameter("github-token", secret: true);
 var githubModel = builder.AddParameter("github-model", value: "openai/gpt-4o-mini");
-var githubReasoningModel = builder.AddParameter("github-reasoning-model", value: "deepseek/deepseek-r1");
+var githubReasoningModel = builder.AddParameter("github-reasoning-model", value: "microsoft/phi-4-mini-reasoning");
 
 // The AG-UI agent server: hosts one AG-UI endpoint per demo scenario (MAF + AG-UI C# SDK).
 var agentServer = builder.AddProject<Projects.AgenticUI_AgentServer>("agentserver")

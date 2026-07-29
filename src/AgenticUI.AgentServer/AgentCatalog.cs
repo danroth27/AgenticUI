@@ -153,12 +153,16 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
     /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
     public AIAgent CreateReasoning()
     {
-        var baseAgent = this._reasoningChatClient.AsAIAgent(
+        // The think-splitter must decorate the IChatClient, not the agent: the agent layer strips
+        // <think>…</think> out of the response text before a DelegatingAIAgent would ever see it.
+        IChatClient reasoningClient = new ThinkSplittingChatClient(this._reasoningChatClient.AsIChatClient());
+
+        return reasoningClient.AsAIAgent(
             name: "ReasoningAgent",
             description: "A reasoning model that shows its thinking.",
-            instructions: "Think step by step, then give a concise final answer.");
-
-        return new ReasoningAgent(baseAgent);
+            instructions: "Think step by step inside your reasoning, then give a final answer of one or "
+                + "two plain sentences. The final answer must be plain prose: no LaTeX, no math "
+                + "notation, no markdown, no bullet points, and no step-by-step recap.");
     }
 
     /// <summary>[Test] A sequential workflow (researcher -> reporter) exposed as an AG-UI agent.</summary>
