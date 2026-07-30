@@ -60,8 +60,9 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             Description = "An assistant that books meetings, but asks for approval first.",
             ChatOptions = new ChatOptions
             {
-                Instructions = "You are a helpful scheduling assistant. When the user asks to schedule " +
-                               "something, call the book_meeting tool. The tool requires the user's approval.",
+                Instructions = "You are a helpful scheduling assistant. When the user asks to schedule "
+                             + "something, call the book_meeting tool immediately. Never ask for "
+                             + "confirmation in text — the app collects the user's approval for you.",
                 Tools = [bookMeeting]
             }
         });
@@ -144,6 +145,8 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                       instructions.
                     - Always include every ingredient the recipe needs, keeping any the user already added.
                     - When the user only asks a question about the recipe, answer in plain text and do NOT call the tool.
+                    - After calling the tool, reply with ONE short sentence in plain text. The recipe card
+                      already shows the details, so never repeat them and never use markdown.
                     """,
                 Tools = [generateRecipe],
             }

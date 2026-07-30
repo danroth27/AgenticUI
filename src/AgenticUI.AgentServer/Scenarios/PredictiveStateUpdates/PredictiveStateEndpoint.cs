@@ -24,7 +24,8 @@ internal static class PredictiveStateEndpoint
     private const string SystemPrompt =
         """
         You are a document editor assistant. When asked to write or edit content:
-        - Use the `write_document` tool with the full document text in Markdown format.
+        - Use the `write_document` tool with the full document text.
+        - Write plain prose. Do not use markdown headings, bold, bullets, or other formatting.
         - You MUST write the full document, even when changing only a few words.
         - When making edits, keep them minimal. Do not change every word.
         - Keep stories SHORT.
@@ -32,9 +33,9 @@ internal static class PredictiveStateEndpoint
         After writing the document, briefly summarize what you wrote in at most two sentences.
         """;
 
-    [Description("Write a document. Use markdown formatting to format the document.")]
+    [Description("Write a document in plain prose.")]
     private static string WriteDocument(
-        [Description("The full document text in Markdown format.")] string document) => "Document written.";
+        [Description("The full document text, in plain prose.")] string document) => "Document written.";
 
     /// <summary>Maps a POST endpoint that streams the document as predictive <c>STATE_SNAPSHOT</c> events.</summary>
     public static void MapPredictiveStateUpdates(
@@ -43,7 +44,7 @@ internal static class PredictiveStateEndpoint
         AITool writeDocument = AIFunctionFactory.Create(
             WriteDocument,
             name: "write_document",
-            description: "Write a document. Use markdown formatting to format the document.",
+            description: "Write a document in plain prose.",
             jsonOptions);
 
         app.MapPost(route, (
@@ -110,3 +111,4 @@ internal static class PredictiveStateEndpoint
         });
     }
 }
+

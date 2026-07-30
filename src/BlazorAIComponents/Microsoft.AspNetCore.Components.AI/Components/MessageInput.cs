@@ -15,6 +15,7 @@ public class MessageInput : IComponent, IDisposable
     private RenderFragment? _leadingActions;
     private RenderFragment? _trailingActions;
     private string _text = "";
+    private bool _ignoreNextInput;
     private bool _isDisabled;
     private IDisposable? _statusSub;
     private bool _allowAttachments;
@@ -155,6 +156,16 @@ public class MessageInput : IComponent, IDisposable
                 EventCallback.Factory.Create<ChangeEventArgs>(
                     this, e =>
                     {
+                        if (_ignoreNextInput)
+                        {
+                            // Submitting with Enter clears the text, but the browser still inserts a
+                            // newline for that keypress and raises `input` afterwards. Re-render with
+                            // the cleared text so that event doesn't restore what was just sent.
+                            _ignoreNextInput = false;
+                            Render();
+                            return;
+                        }
+
                         _text = e.Value?.ToString() ?? "";
                         // Re-render so the component's rendered value tracks the DOM value.
                         // Without this, clearing _text on submit produces no diff (the last
@@ -222,6 +233,7 @@ public class MessageInput : IComponent, IDisposable
     {
         if (e.Key == "Enter" && !e.ShiftKey && !_isDisabled)
         {
+            _ignoreNextInput = true;
             await SubmitAsync();
         }
     }
