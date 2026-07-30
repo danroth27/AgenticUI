@@ -1,5 +1,4 @@
 using AgenticUI.AgentServer;
-using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
@@ -39,9 +38,6 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
         .MapResultAsStateDelta("update_plan_step")); // JSON Patch -> STATE_DELTA
 app.MapAGUIServer("/shared_state", agents.CreateSharedState())
     .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
-// Predictive state updates use AGUIStreamOptions.MapCall via a manual pipeline (no function
-// invocation), so the endpoint is mapped directly rather than through MapAGUIServer.
-app.MapPredictiveStateUpdates("/predictive_state_updates", chatClient.AsIChatClient(), jsonOptions);
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 app.MapAGUIServer("/workflow", agents.CreateWorkflow());
 app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
@@ -59,7 +55,6 @@ app.MapGet("/", () => Results.Ok(new
         "/tool_based_generative_ui",
         "/agentic_generative_ui",
         "/shared_state",
-        "/predictive_state_updates",
         "/reasoning",
         "/workflow",
         "/selective_approval"

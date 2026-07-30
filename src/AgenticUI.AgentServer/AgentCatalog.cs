@@ -3,7 +3,6 @@
 using System.Text.Json;
 using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;
-using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;

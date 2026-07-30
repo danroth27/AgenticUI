@@ -169,12 +169,7 @@ options.StateMapper = ctx =>
 };
 ```
 
-### 6. Predictive state updates
-
-As the agent writes a document, the server streams it progressively as a series of `STATE_SNAPSHOT`
-events, so you watch the document being typed in real time — before the tool call even finishes.
-
-### 7. Agentic generative UI
+### 6. Agentic generative UI
 
 The agent plans work with a `create_plan` tool (a `STATE_SNAPSHOT`) and advances each step with
 `update_plan_step` (a `STATE_DELTA` — an RFC 6902 JSON Patch). The UI renders live plan progress, checking

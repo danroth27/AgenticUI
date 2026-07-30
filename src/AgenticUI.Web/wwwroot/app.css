@@ -183,7 +183,6 @@ body { color: var(--app-text); }
 .recipe__steps { margin: 0; padding-left: 1.25rem; }
 .recipe__steps li { margin-bottom: .5rem; line-height: 1.55; }
 
-.document { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.7; font-size: 1.02rem; }
 
 .plan { list-style: none; padding: 0; margin: 0; }
 .plan__step { display: flex; gap: .75rem; align-items: flex-start; padding: .6rem 0; border-bottom: 1px solid #f0f0f0; }

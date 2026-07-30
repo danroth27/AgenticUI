@@ -1,5 +1,5 @@
 // Keeps streaming content pinned to its newest output: chat transcripts, and the
-// artifact panels that scenarios like predictive state write into progressively.
+// artifact panels that scenarios like the agentic plan write into progressively.
 // The prototype chat components style a scroll-to-bottom affordance but never
 // scroll anything themselves, so long output streams in below the fold.
 // Following stops as soon as the reader scrolls up, and resumes when they

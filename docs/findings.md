@@ -19,7 +19,7 @@ Built against:
 - **Microsoft Foundry drops straight in.** Foundry exposes an OpenAI-compatible endpoint at
   `{resource}/openai/v1`, so pointing a stock `OpenAIClient` at it (the API key is accepted as a bearer
   token) and calling `.AsAIAgent(...)` was frictionless — no Azure-specific client required.
-- **Streaming chat, backend tools, human-in-the-loop approvals, shared/predictive/plan state, and
+- **Streaming chat, backend tools, human-in-the-loop approvals, shared/plan state, and
   reasoning all worked end-to-end** (state and reasoning after the fixes below). The
   `ApprovalRequiredAIFunction` → AG-UI interrupt → `ToolApprovalRequestContent` → Blazor
   `FunctionApprovalBlock` (Approve/Reject) → resume round-trip is smooth. Reasoning surfaces as AG-UI
@@ -233,19 +233,26 @@ Found while bringing the C# Learn docs to parity with the Python docs. Each was 
 5. **Blazor `UIAgent<TState>` / `AGUIChatClient` don't auto-send client state** (`RunAgentInput.State`);
    a client must set it manually via `ChatOptions.RawRepresentationFactory` (see bug #2).
 6. **`UIActionBlock` has no default renderer/auto-invoke** (see bug #3).
-7. **No declarative predictive state updates** (streaming tool *arguments* into state). C# has declarative
+7. **No predictive state updates at all** (streaming tool *arguments* into state). C# has declarative
    helpers for tool *results* (`AGUIStreamOptions.MapResultAsStateSnapshot` / `MapResultAsStateDelta`), but
-   the predictive case has no declarative equivalent of Python's `predict_state_config` — you must
-   hand-roll the low-level `MapCall(...)` pipeline (~140 lines: read the streamed arg, emit snapshots/deltas,
-   complete the call, inject `confirm_changes`, plus manual endpoint wiring without function invocation).
-   So the C# predictive docs use a manual document-editor example that can't mirror Python's concise recipe
-   example. Tracked by [ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245) (SDK declarative
+   the predictive case has no declarative equivalent of Python's `predict_state_config`, *and* the
+   hand-rolled low-level path can't reproduce it either: `AGUIStreamOptions.MapCall` is typed
+   `Func<FunctionCallContent, IEnumerable<BaseEvent>>` — a **complete** call, invoked **once**.
+   `Microsoft.Extensions.AI` coalesces streamed tool-call argument deltas before surfacing them, so by
+   the time `MapCall` runs the arguments are already final. Measured on the wire: `TOOL_CALL_START` /
+   `TOOL_CALL_ARGS` / `TOOL_CALL_END` all arrive at the same millisecond, and the "progressive" snapshots
+   a `MapCall` loop emits are 137 events in **9 ms** — a fake stream synthesized from an
+   already-complete string. (Contrast `/agentic_generative_ui`, which is genuinely paced: 1 snapshot +
+   10 deltas over 34.5 s, because each delta corresponds to real agent progress.) Surfacing partial
+   arguments today would require provider-specific `RawRepresentation` digging.
+   **This sample no longer ships a predictive-state scenario for that reason.**
+   Tracked by [ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245) (SDK declarative
    mapping) and the broader [agent-framework#4177](https://github.com/microsoft/agent-framework/issues/4177)
    (`StateBag` auto-emission + arg→state mapping; agent-framework core).
 
 Verified-and-documented C# scenarios (tested, not guessed): agentic chat, backend tools, frontend tools,
 human-in-the-loop approval (approve→resume), **selective approval** (mixed approved/unapproved tools in
-one turn), shared state, predictive state, agentic generative UI, reasoning, **workflow-as-agent**, and
+one turn), shared state, agentic generative UI, reasoning, **workflow-as-agent**, and
 the minimal-body `curl` test.
 
 ## C# developer-experience issues to track (vs Python)

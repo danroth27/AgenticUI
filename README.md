@@ -15,7 +15,6 @@ wires the two together, and everything runs on **[Microsoft Foundry](https://lea
 | **Frontend tools** | Client-side tool executed in the browser | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
 | **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
-| **Predictive state** | A document streamed live via progressive `STATE_SNAPSHOT`s | `/predictive_state_updates` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Reasoning** | A reasoning model's chain of thought via `REASONING_*` events | `/reasoning` |
 
