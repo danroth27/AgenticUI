@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using System.ClientModel;
-using AgenticUI.AgentServer.Scenarios.Reasoning;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
@@ -79,8 +78,6 @@ public static class Foundry
     /// same reasoning tokens but return no reasoning text at all.
     /// </summary>
     public static IChatClient CreateReasoningChatClient(FoundryOptions options) =>
-        new ReasoningOptionsChatClient(
-            CreateClient(options)
-                .GetResponsesClient()
-                .AsIChatClient(options.ReasoningModel));
+        CreateClient(options).GetResponsesClient().AsIChatClient(options.ReasoningModel);
 }
+

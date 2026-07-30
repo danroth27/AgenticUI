@@ -173,18 +173,17 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
   `ResponseReasoningOptions.ReasoningSummaryVerbosity` is set — chat completions spend the same
   reasoning tokens (visible in `usage.completion_tokens_details.reasoning_tokens`) but return no
   reasoning text at all. Setting that option via the agent's `ChatOptions.RawRepresentationFactory`
-  works for a direct `RunStreamingAsync` call, but is **silently dropped over AG-UI**: an AG-UI run
-  supplies its own `ChatOptions` (tools, context), which replaces the agent's. The fix is to apply the
-  option in a `DelegatingChatClient` so it can't be lost. A first-class
-  `ChatOptions.ReasoningEffort` / `ReasoningSummary` on `Microsoft.Extensions.AI` would remove the
-  provider-specific `RawRepresentationFactory` glue entirely, and MAF merging (rather than replacing)
-  agent `ChatOptions` would remove the sharp edge.
-- **`ChatClientBuilder.ConfigureOptions(...)` did not apply the `RawRepresentationFactory`** in this
-  setup (0 reasoning updates), while an equivalent hand-written `DelegatingChatClient` did (104).
-  Worth a closer look — if this is by design it is surprising; if not, it's a bug.
-- **Low reasoning effort yields no summary.** At the default effort an easy question can be answered
-  with so little deliberation that the model returns no summary, leaving the UI's thought-process
-  panel empty. Raising `ReasoningEffortLevel` makes it deterministic.
+  is enough: MAF *merges* agent-level options into each run rather than replacing them
+  (`ChatClientAgent.CreateConfiguredChatOptions` chains the two factories), so the opt-in survives an
+  AG-UI run, which supplies only tools and context. Measured 22/25 runs over the AG-UI wire. A
+  first-class `ChatOptions.ReasoningEffort` / `ReasoningSummary` on `Microsoft.Extensions.AI` would
+  still be welcome — it would remove the provider-specific `RawRepresentationFactory` glue entirely.
+  `ChatClientBuilder.ConfigureOptions(...)` applies the same option correctly (5/5).
+- **Prompting for brevity suppresses the reasoning summary.** Measured against `gpt-5-mini`, 5 trials
+  per variant: instructions asking for "one or two sentences, no step-by-step recap" produced a
+  summary in only **1–2 of 5** runs, while instructions constraining *formatting* only ("plain prose,
+  no markdown or bullets") produced one in **5/5** (avg 1192 chars). Raising `ReasoningEffortLevel`
+  did **not** compensate — `Medium` was worse than the default. Constrain format, never length.
 - **HITL model behavior:** `gpt-4o-mini` often replies "shall I proceed?" in text before actually calling
   an approval-required tool. Tightening the system prompt (or using a stronger model) makes it call the
   tool on the first turn. Not a framework issue.

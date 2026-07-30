@@ -9,6 +9,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
+using OpenAI.Responses;
 
 namespace AgenticUI.AgentServer;
 
@@ -162,7 +163,16 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 // step-by-step recap" measurably suppress the model's reasoning summary, leaving the
                 // thought-process panel empty.
                 Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
-                    + "notation, or bullet points."
+                    + "notation, or bullet points.",
+                // Reasoning summaries are opt-in on the Responses API. MAF merges these agent-level
+                // options into every run, including runs that arrive over AG-UI.
+                RawRepresentationFactory = _ => new CreateResponseOptions
+                {
+                    ReasoningOptions = new ResponseReasoningOptions
+                    {
+                        ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Detailed
+                    }
+                }
             }
         });
 
@@ -220,3 +230,4 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
     private static string TransferFunds(string toAccount, decimal amount) =>
         $"Transferred {amount:C} to account {toAccount}.";
 }
+
