@@ -17,35 +17,30 @@
     </div>
 
     <div class="scenario__chat">
-        <AgentBoundary Agent="_agent">
-            <div class="chat-body">
-                <MessageList>
-                    <BlockRenderer TBlock="FunctionInvocationContentBlock"
-                                   When="@(b => b.ToolName == "get_weather")">
-                        @{
-                            var w = ReadWeather(context);
-                        }
-                        <div class="weather-card">
-                            <div class="weather-card__icon">@(w.Conditions == "sunny" ? "☀️" : "🌤️")</div>
-                            <div class="weather-card__body">
-                                <div class="weather-card__location">@GetLocation(context)</div>
-                                <div class="weather-card__temp">@w.Temperature°C</div>
-                                <div class="weather-card__meta">
-                                    @w.Conditions · feels like @w.FeelsLike°C · humidity @w.Humidity% · wind @w.WindSpeed km/h
-                                </div>
-                                @if (!context.HasResult)
-                                {
-                                    <div class="weather-card__pending">Fetching weather…</div>
-                                }
+        <ChatPage Agent="_agent" Placeholder="Ask for the weather in a city…">
+            <WelcomeContent>
+                <BlockRenderer TBlock="FunctionInvocationContentBlock"
+                               When="@(b => b.ToolName == "get_weather")">
+                    @{
+                        var w = ReadWeather(context);
+                    }
+                    <div class="weather-card">
+                        <div class="weather-card__icon">@(w.Conditions == "sunny" ? "☀️" : "🌤️")</div>
+                        <div class="weather-card__body">
+                            <div class="weather-card__location">@GetLocation(context)</div>
+                            <div class="weather-card__temp">@w.Temperature°C</div>
+                            <div class="weather-card__meta">
+                                @w.Conditions · feels like @w.FeelsLike°C · humidity @w.Humidity% · wind @w.WindSpeed km/h
                             </div>
+                            @if (!context.HasResult)
+                            {
+                                <div class="weather-card__pending">Fetching weather…</div>
+                            }
                         </div>
-                    </BlockRenderer>
-                </MessageList>
-            </div>
-            <div class="chat-input">
-                <MessageInput Placeholder="Ask for the weather in a city…" />
-            </div>
-        </AgentBoundary>
+                    </div>
+                </BlockRenderer>
+            </WelcomeContent>
+        </ChatPage>
     </div>
 </div>
 

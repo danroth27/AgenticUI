@@ -72,8 +72,10 @@
     }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
+    background-color: rgba(255,255,255,0.16);
+    box-shadow: inset 3px 0 0 #9d7bff;
     color: white;
+    font-weight: 600;
 }
 
 .nav-item ::deep .nav-link:hover {

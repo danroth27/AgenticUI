@@ -16,28 +16,30 @@
     </div>
 
     <div class="scenario__split">
+        <aside class="scenario__panel">
+            <div class="panel-card">
+                @if (_agent.State.Value.Steps.Count == 0)
+                {
+                    <div class="panel-empty">The plan will appear here, updating as the agent works.</div>
+                }
+                else
+                {
+                    <ol class="plan">
+                        @foreach (var step in _agent.State.Value.Steps)
+                        {
+                            var done = string.Equals(step.Status, "completed", StringComparison.OrdinalIgnoreCase);
+                            <li class="plan__step @(done ? "plan__step--done" : "")">
+                                <span class="plan__marker">@(done ? "✓" : "○")</span>
+                                <span class="plan__text">@step.Description</span>
+                            </li>
+                        }
+                    </ol>
+                }
+            </div>
+        </aside>
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to plan something…" />
         </div>
-        <aside class="scenario__panel">
-            @if (_agent.State.Value.Steps.Count == 0)
-            {
-                <div class="panel-empty">The plan will appear here, updating as the agent works.</div>
-            }
-            else
-            {
-                <ol class="plan">
-                    @foreach (var step in _agent.State.Value.Steps)
-                    {
-                        var done = string.Equals(step.Status, "completed", StringComparison.OrdinalIgnoreCase);
-                        <li class="plan__step @(done ? "plan__step--done" : "")">
-                            <span class="plan__marker">@(done ? "✓" : "○")</span>
-                            <span class="plan__text">@step.Description</span>
-                        </li>
-                    }
-                </ol>
-            }
-        </aside>
     </div>
 </div>
 

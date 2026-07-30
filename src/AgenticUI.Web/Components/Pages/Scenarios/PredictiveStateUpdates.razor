@@ -15,19 +15,21 @@
     </div>
 
     <div class="scenario__split">
+        <aside class="scenario__panel">
+            <div class="panel-card">
+                @if (string.IsNullOrEmpty(_agent.State.Value.Document))
+                {
+                    <div class="panel-empty">The document will appear here as the agent writes it.</div>
+                }
+                else
+                {
+                    <article class="document">@_agent.State.Value.Document</article>
+                }
+            </div>
+        </aside>
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to write or edit a document…" />
         </div>
-        <aside class="scenario__panel">
-            @if (string.IsNullOrEmpty(_agent.State.Value.Document))
-            {
-                <div class="panel-empty">The document will appear here as the agent writes it.</div>
-            }
-            else
-            {
-                <article class="document">@_agent.State.Value.Document</article>
-            }
-        </aside>
     </div>
 </div>
 

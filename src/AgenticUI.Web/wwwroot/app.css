@@ -59,61 +59,129 @@ h1:focus {
     text-align: start;
 }
 /* ---- AgenticUI demo styles ---- */
-.home { max-width: 900px; }
-.home .lead { font-size: 1.1rem; color: #444; margin-bottom: 1.5rem; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-.card { display: block; padding: 1rem 1.25rem; border: 1px solid #e5e5e5; border-radius: 10px;
-    text-decoration: none; color: inherit; transition: box-shadow .15s, border-color .15s; background: #fff; }
-.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: #512bd4; }
+
+/* Design tokens. Neutral surfaces with one brand accent, so every scenario page
+   reads as part of the same app and the artifact panel stays the focal point. */
+:root {
+    --app-bg: #f5f5f5;
+    --app-surface: #ffffff;
+    --app-border: #e5e7eb;
+    --app-text: #212121;
+    --app-text-muted: #6b7280;
+    --app-brand: #512bd4;
+    --app-brand-soft: #f0ebff;
+    --app-radius: 12px;
+    --app-radius-lg: 16px;
+    --app-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+    --app-shadow-lg: 0 4px 20px rgba(0, 0, 0, .08);
+}
+
+body { color: var(--app-text); }
+
+/* ---- Home ---- */
+.home { max-width: 1000px; }
+.home .lead { font-size: 1.1rem; color: var(--app-text-muted); margin-bottom: 1.5rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.card { display: block; padding: 1.1rem 1.25rem; border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); text-decoration: none; color: inherit; background: var(--app-surface);
+    transition: box-shadow .15s, border-color .15s, transform .15s; }
+.card:hover { box-shadow: var(--app-shadow-lg); border-color: var(--app-brand); transform: translateY(-1px); }
 .card h3 { margin: 0 0 .35rem; font-size: 1.05rem; }
-.card p { margin: 0; color: #555; font-size: .9rem; }
+.card p { margin: 0; color: var(--app-text-muted); font-size: .9rem; }
 
-.nav-heading { text-transform: uppercase; font-size: .72rem; letter-spacing: .06em; opacity: .6;
-    margin-top: .75rem; padding-top: .5rem; }
+/* Sits on the dark sidebar, so it needs an explicit light colour rather than
+   inheriting the body text colour. */
+.nav-heading { text-transform: uppercase; font-size: .72rem; letter-spacing: .06em;
+    color: rgba(255, 255, 255, .55); margin-top: .75rem; padding-top: .5rem; }
 
-.scenario { display: flex; flex-direction: column; height: calc(100vh - 4rem); }
-.scenario__intro { flex: 0 0 auto; margin-bottom: .5rem; }
-.scenario__intro h1 { margin: 0 0 .25rem; }
-.scenario__intro p { color: #555; max-width: 70ch; margin: 0; font-size: .95rem; }
-.scenario__chat { flex: 1 1 auto; min-height: 0; border: 1px solid #e5e5e5; border-radius: 10px;
-    overflow: hidden; display: flex; flex-direction: column; background: #fff; }
-.scenario__split { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 360px; gap: 1rem; }
-.scenario__split .scenario__chat { height: 100%; }
-.scenario__panel { border: 1px solid #e5e5e5; border-radius: 10px; padding: 1rem; overflow: auto; background: #fafafa; }
-.panel-empty { color: #888; font-style: italic; }
+/* ---- Scenario shell ----
+   The layout pins <main> to the viewport (see MainLayout.razor.css), so the scenario
+   fills the remaining height and each region owns its own scrolling. Nothing here may
+   use a viewport-relative height, or long transcripts overflow the page and become
+   unreachable. */
+.scenario { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding-bottom: 1.1rem; }
+.scenario__intro { flex: 0 0 auto; margin-bottom: .75rem; }
+.scenario__intro h1 { margin: 0 0 .35rem; font-size: 1.6rem; font-weight: 600; }
+.scenario__intro p { color: var(--app-text-muted); max-width: 80ch; margin: 0; font-size: .95rem; line-height: 1.55; }
+.scenario__intro code { background: #f3f4f6; border-radius: 4px; padding: .05rem .3rem; font-size: .88em; }
+.scenario__note { color: var(--app-text-muted); font-size: .85rem; font-style: italic; margin-top: .35rem; }
 
-.chat-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 1rem; }
-.chat-input { flex: 0 0 auto; border-top: 1px solid #eee; padding: .5rem; }
+.scenario__chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--app-surface); border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); box-shadow: var(--app-shadow); }
 
+/* The component library sizes the chat page to the viewport. Inside our shell it must
+   instead fill its container, otherwise it overflows and the transcript can't scroll. */
+.scenario__chat > .sc-ai-chat-page { flex: 1 1 auto; min-height: 0; height: auto; background: transparent; }
+
+/* Artifact-primary split: the thing the agent is building gets the room, the
+   conversation sits alongside it as a rail. */
+.scenario__split { flex: 1 1 auto; min-height: 0; display: grid;
+    grid-template-columns: minmax(0, 1fr) 26rem; gap: 1rem; }
+.scenario__split > * { min-height: 0; }
+
+.scenario__panel { overflow: auto; background: var(--app-bg); border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); padding: 1.5rem; display: flex; justify-content: center; align-items: flex-start; }
+.panel-card { width: 100%; max-width: 44rem; background: var(--app-surface);
+    border-radius: var(--app-radius-lg); padding: 1.75rem; box-shadow: var(--app-shadow-lg); }
+.panel-empty { color: var(--app-text-muted); font-style: italic; }
+
+/* Section headings inside artifact cards, with the accent underline the artifacts share. */
+.panel-card h2 { margin: 0 0 1rem; font-size: 1.4rem; font-weight: 600; }
+.panel-card h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 .6rem; padding-bottom: .35rem;
+    border-bottom: 2px solid var(--app-brand); display: inline-block; width: fit-content; }
+
+/* Consistent, quiet scrollbars everywhere content scrolls. */
+.scenario__panel::-webkit-scrollbar,
+.scenario__chat ::-webkit-scrollbar { width: 8px; }
+.scenario__panel::-webkit-scrollbar-thumb,
+.scenario__chat ::-webkit-scrollbar-thumb { background: #c8c8c8; border-radius: 4px; }
+.scenario__panel::-webkit-scrollbar-thumb:hover,
+.scenario__chat ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+/* Tighten the library's centred max-widths when the chat is a narrow rail. */
+.scenario__split .sc-ai-message-list,
+.scenario__split .sc-ai-chat-page__input-container { max-width: none; }
+.scenario__split .sc-ai-message-list { padding: 1rem; }
+.scenario__split .sc-ai-chat-page__footer { padding: .75rem; }
+
+@media (max-width: 640.98px) {
+    .scenario { min-height: 32rem; }
+    .scenario__split { grid-template-columns: 1fr; }
+}
+
+/* ---- Artifacts ---- */
 .weather-card { display: flex; gap: 1rem; align-items: center; padding: 1rem 1.25rem; margin: .5rem 0;
-    border-radius: 12px; background: linear-gradient(135deg, #e3f0ff, #f6fbff); border: 1px solid #d6e6fb; max-width: 420px; }
+    border-radius: var(--app-radius); background: linear-gradient(135deg, #e3f0ff, #f6fbff);
+    border: 1px solid #d6e6fb; max-width: 420px; }
 .weather-card__icon { font-size: 2.5rem; }
 .weather-card__location { font-weight: 600; font-size: 1.1rem; }
 .weather-card__temp { font-size: 2rem; font-weight: 700; color: #1f5fbf; }
 .weather-card__meta { color: #567; font-size: .85rem; }
-.weather-card__pending { color: #888; font-style: italic; font-size: .8rem; }
+.weather-card__pending { color: var(--app-text-muted); font-style: italic; font-size: .8rem; }
 
-.swatch { width: 100%; height: 120px; border-radius: 10px; border: 1px solid #ddd; }
-.swatch-label { margin-top: .5rem; color: #555; }
+.swatch { width: 100%; height: 180px; border-radius: var(--app-radius); border: 1px solid var(--app-border); }
+.swatch-label { margin-top: .75rem; color: var(--app-text-muted); }
 
-.recipe h2 { margin-top: 0; }
-.recipe__meta { display: flex; gap: 1rem; color: #666; margin-bottom: .5rem; }
+.recipe__meta { display: flex; gap: 1rem; color: var(--app-text-muted); margin-bottom: .75rem; }
 .recipe__tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
-.recipe__tags .tag { background: #eee; border-radius: 999px; padding: .1rem .6rem; font-size: .8rem; }
-.recipe__ingredients { list-style: none; padding: 0; }
-.recipe__ingredients li { padding: .2rem 0; border-bottom: 1px dashed #eee; }
-.recipe__ingredients .amount { color: #888; float: right; }
-.recipe__steps li { margin-bottom: .35rem; }
+.recipe__tags .tag { background: var(--app-brand-soft); color: var(--app-brand); border-radius: 999px;
+    padding: .15rem .7rem; font-size: .8rem; }
+.recipe__ingredients { list-style: none; padding: 0; margin: 0; }
+.recipe__ingredients li { padding: .4rem 0; border-bottom: 1px solid #f0f0f0; }
+.recipe__ingredients .amount { color: var(--app-text-muted); float: right; }
+.recipe__steps { margin: 0; padding-left: 1.25rem; }
+.recipe__steps li { margin-bottom: .5rem; line-height: 1.55; }
 
-.document { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.5; }
+.document { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.7; font-size: 1.02rem; }
 
 .plan { list-style: none; padding: 0; margin: 0; }
-.plan__step { display: flex; gap: .6rem; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #eee; }
-.plan__marker { font-size: 1.1rem; color: #bbb; }
+.plan__step { display: flex; gap: .75rem; align-items: flex-start; padding: .6rem 0; border-bottom: 1px solid #f0f0f0; }
+.plan__step:last-child { border-bottom: none; }
+.plan__marker { font-size: 1.1rem; color: #c4c4c4; }
 .plan__step--done .plan__marker { color: #2e9d5b; }
-.plan__step--done .plan__text { color: #888; text-decoration: line-through; }
+.plan__step--done .plan__text { color: var(--app-text-muted); text-decoration: line-through; }
 
-.ui-action-chip { display:inline-block; padding:.3rem .7rem; margin:.4rem 0; border-radius:999px; background:#f0ebff; color:#512bd4; font-size:.85rem; }
-.ui-action-chip code { background:transparent; color:inherit; }
-
-.scenario__note { color:#888; font-size:.85rem; font-style:italic; margin-top:.25rem; }
+.ui-action-chip { display: inline-block; padding: .3rem .7rem; margin: .4rem 0; border-radius: 999px;
+    background: var(--app-brand-soft); color: var(--app-brand); font-size: .85rem; }
+.ui-action-chip code { background: transparent; color: inherit; }

@@ -16,24 +16,21 @@
     </div>
 
     <div class="scenario__split">
-        <div class="scenario__chat" style="--accent: @_accent;">
-            <AgentBoundary Agent="_agent">
-                <div class="chat-body">
-                    <MessageList>
-                        <BlockRenderer TBlock="UIActionBlock">
-                            <div class="ui-action-chip">🎨 ran <code>@context.ToolName</code> in the browser</div>
-                        </BlockRenderer>
-                    </MessageList>
-                </div>
-                <div class="chat-input">
-                    <MessageInput Placeholder="Ask me to change the accent color…" />
-                </div>
-            </AgentBoundary>
-        </div>
         <aside class="scenario__panel">
-            <div class="swatch" style="background: @_accent;"></div>
-            <div class="swatch-label">Current accent: <code>@_accent</code></div>
+            <div class="panel-card">
+                <div class="swatch" style="background: @_accent;"></div>
+                <div class="swatch-label">Current accent: <code>@_accent</code></div>
+            </div>
         </aside>
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask me to change the accent color…">
+                <WelcomeContent>
+                    <BlockRenderer TBlock="UIActionBlock">
+                        <div class="ui-action-chip">🎨 ran <code>@context.ToolName</code> in the browser</div>
+                    </BlockRenderer>
+                </WelcomeContent>
+            </ChatPage>
+        </div>
     </div>
 </div>
 

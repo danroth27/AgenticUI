@@ -16,18 +16,15 @@
     </div>
 
     <div class="scenario__split">
-        <div class="scenario__chat">
-            <ChatPage Agent="_agent" Placeholder="Ask for a recipe…" />
-        </div>
         <aside class="scenario__panel">
-            @{ var r = _agent.State.Value.Recipe; }
-            @if (string.IsNullOrEmpty(r.Title))
-            {
-                <div class="panel-empty">The recipe will appear here as the agent builds it.</div>
-            }
-            else
-            {
-                <div class="recipe">
+            <div class="panel-card recipe">
+                @{ var r = _agent.State.Value.Recipe; }
+                @if (string.IsNullOrEmpty(r.Title))
+                {
+                    <div class="panel-empty">The recipe will appear here as the agent builds it.</div>
+                }
+                else
+                {
                     <h2>@r.Title</h2>
                     <div class="recipe__meta">
                         @if (!string.IsNullOrEmpty(r.SkillLevel)) { <span>🎚️ @r.SkillLevel</span> }
@@ -56,9 +53,12 @@
                             @foreach (var s in r.Instructions) { <li>@s</li> }
                         </ol>
                     }
-                </div>
-            }
+                }
+            </div>
         </aside>
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask for a recipe…" />
+        </div>
     </div>
 </div>
 
