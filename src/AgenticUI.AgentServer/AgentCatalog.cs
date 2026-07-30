@@ -135,7 +135,7 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             description: "Generate or update the shared recipe and display it to the user.",
             AgentServerSerializerContext.Default.Options);
 
-        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        return new SharedStateChatClient(this._chatClient.AsIChatClient()).AsAIAgent(new ChatClientAgentOptions
         {
             Name = "SharedStateAgent",
             Description = "An agent that keeps a structured recipe in sync with the client.",

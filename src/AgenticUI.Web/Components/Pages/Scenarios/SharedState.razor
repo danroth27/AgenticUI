@@ -1,4 +1,5 @@
 @page "/shared-state"
+@using System.Text.Json
 @inject AgentServerConnection Agents
 @implements IDisposable
 
@@ -8,57 +9,108 @@
     <div class="scenario__intro">
         <h1>Shared state</h1>
         <p>
-            The agent and the UI share a structured object. The agent returns a recipe as JSON, which the
-            server emits as an AG-UI <code>STATE_SNAPSHOT</code>; the client maps it into a strongly-typed
-            <code>UIAgent&lt;RecipeState&gt;</code> and renders the live recipe card. Try:
-            <em>"Make me a vegetarian pasta recipe."</em>
+            The agent and the UI edit one structured object. The agent's recipe arrives as an AG-UI
+            <code>STATE_SNAPSHOT</code> and maps into a strongly-typed <code>UIAgent&lt;RecipeState&gt;</code>;
+            every edit you make here travels back in <code>RunAgentInput.State</code>, so the agent
+            builds on your changes. Try: <em>"Make me a vegetarian pasta recipe"</em>, edit an
+            ingredient yourself, then ask <em>"double the recipe"</em>.
         </p>
     </div>
 
     <div class="scenario__split">
         <aside class="scenario__panel">
-            <div class="panel-card recipe">
+            <div class="panel-card recipe-editor">
                 @{ var r = _agent.State.Value.Recipe; }
-                @if (string.IsNullOrEmpty(r.Title))
-                {
-                    <div class="panel-empty">The recipe will appear here as the agent builds it.</div>
-                }
-                else
-                {
-                    <h2>@r.Title</h2>
-                    <div class="recipe__meta">
-                        @if (!string.IsNullOrEmpty(r.SkillLevel)) { <span>🎚️ @r.SkillLevel</span> }
-                        @if (!string.IsNullOrEmpty(r.CookingTime)) { <span>⏱️ @r.CookingTime</span> }
+
+                <input class="recipe-editor__title" @bind="r.Title"
+                       placeholder="Untitled recipe" aria-label="Recipe title" />
+
+                <div class="recipe-editor__meta">
+                    <label>
+                        <span>Skill level</span>
+                        <input @bind="r.SkillLevel" placeholder="e.g. Beginner" />
+                    </label>
+                    <label>
+                        <span>Cooking time</span>
+                        <input @bind="r.CookingTime" placeholder="e.g. 45 minutes" />
+                    </label>
+                </div>
+
+                <section>
+                    <h3>Preferences</h3>
+                    <div class="recipe-editor__tags">
+                        @for (var i = 0; i < r.SpecialPreferences.Count; i++)
+                        {
+                            var index = i;
+                            <span class="tag" @key="index">
+                                @r.SpecialPreferences[index]
+                                <button type="button" class="tag__remove" title="Remove preference"
+                                        @onclick="() => r.SpecialPreferences.RemoveAt(index)">×</button>
+                            </span>
+                        }
+                        <input class="recipe-editor__tag-input" @bind="_newPreference"
+                               @onkeydown="AddPreferenceOnEnter"
+                               placeholder="Add a preference…" aria-label="Add a preference" />
                     </div>
-                    @if (r.SpecialPreferences.Count > 0)
+                </section>
+
+                <section>
+                    <h3>
+                        Ingredients
+                        <button type="button" class="recipe-editor__add" @onclick="AddIngredient">+ Add</button>
+                    </h3>
+                    @if (r.Ingredients.Count == 0)
                     {
-                        <div class="recipe__tags">
-                            @foreach (var p in r.SpecialPreferences) { <span class="tag">@p</span> }
-                        </div>
+                        <p class="panel-empty">No ingredients yet. Ask the agent, or add one yourself.</p>
                     }
-                    @if (r.Ingredients.Count > 0)
+                    else
                     {
-                        <h3>Ingredients</h3>
-                        <ul class="recipe__ingredients">
-                            @foreach (var i in r.Ingredients)
+                        <ul class="recipe-editor__ingredients">
+                            @foreach (var ingredient in r.Ingredients)
                             {
-                                <li>
-                                    <span class="ingredient">@i.Icon @i.Name</span>
-                                    <span class="amount">@i.Amount</span>
+                                <li @key="ingredient">
+                                    <input class="cell cell--icon" @bind="ingredient.Icon" aria-label="Icon" />
+                                    <input class="cell cell--name" @bind="ingredient.Name"
+                                           placeholder="Ingredient" aria-label="Ingredient name" />
+                                    <input class="cell cell--amount" @bind="ingredient.Amount"
+                                           placeholder="Amount" aria-label="Amount" />
+                                    <button type="button" class="row-remove" title="Remove ingredient"
+                                            @onclick="() => r.Ingredients.Remove(ingredient)">×</button>
                                 </li>
                             }
                         </ul>
                     }
-                    @if (r.Instructions.Count > 0)
+                </section>
+
+                <section>
+                    <h3>
+                        Instructions
+                        <button type="button" class="recipe-editor__add" @onclick="AddInstruction">+ Add</button>
+                    </h3>
+                    @if (r.Instructions.Count == 0)
                     {
-                        <h3>Instructions</h3>
-                        <ol class="recipe__steps">
-                            @foreach (var s in r.Instructions) { <li>@s</li> }
+                        <p class="panel-empty">No steps yet.</p>
+                    }
+                    else
+                    {
+                        <ol class="recipe-editor__steps">
+                            @for (var i = 0; i < r.Instructions.Count; i++)
+                            {
+                                var index = i;
+                                <li @key="index">
+                                    <textarea rows="2" aria-label="@($"Step {index + 1}")"
+                                              value="@r.Instructions[index]"
+                                              @onchange="e => r.Instructions[index] = e.Value?.ToString() ?? string.Empty"></textarea>
+                                    <button type="button" class="row-remove" title="Remove step"
+                                            @onclick="() => r.Instructions.RemoveAt(index)">×</button>
+                                </li>
+                            }
                         </ol>
                     }
-                }
+                </section>
             </div>
         </aside>
+
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask for a recipe…" />
         </div>
@@ -68,10 +120,14 @@
 @code {
     private UIAgent<RecipeState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private string _newPreference = string.Empty;
 
     protected override void OnInitialized()
     {
-        _chatClient = Agents.CreateChatClient("/shared_state");
+        // The state provider runs on every turn, so whatever is in the editor at that moment
+        // travels with the request as RunAgentInput.State.
+        _chatClient = Agents.CreateChatClient("/shared_state", GetCurrentState);
+
         _agent = new UIAgent<RecipeState>(_chatClient, options =>
         {
             options.StateMapper = ctx =>
@@ -87,7 +143,25 @@
                 return false;
             };
         });
+
         _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    private JsonElement? GetCurrentState() => JsonSerializer.SerializeToElement(_agent.State.Value);
+
+    private void AddIngredient() => _agent.State.Value.Recipe.Ingredients.Add(new Ingredient());
+
+    private void AddInstruction() => _agent.State.Value.Recipe.Instructions.Add(string.Empty);
+
+    private void AddPreferenceOnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_newPreference))
+        {
+            return;
+        }
+
+        _agent.State.Value.Recipe.SpecialPreferences.Add(_newPreference.Trim());
+        _newPreference = string.Empty;
     }
 
     public void Dispose() => (_chatClient as IDisposable)?.Dispose();

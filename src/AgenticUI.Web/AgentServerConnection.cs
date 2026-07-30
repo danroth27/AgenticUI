@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
+using System.Text.Json;
 using AGUI.Client;
 using Microsoft.Extensions.AI;
 
@@ -19,5 +20,25 @@ public sealed class AgentServerConnection(IHttpClientFactory httpClientFactory)
     {
         HttpClient http = httpClientFactory.CreateClient("agentserver");
         return new AGUIChatClient(new AGUIChatClientOptions(http, endpoint));
+    }
+
+    /// <summary>
+    /// Creates an <see cref="IChatClient"/> that sends the client's current state to the agent on
+    /// every run, so edits the user makes directly in the UI are part of the next turn's input.
+    /// </summary>
+    /// <param name="endpoint">The endpoint path on the agent server, e.g. <c>/shared_state</c>.</param>
+    /// <param name="stateProvider">Supplies the state to send, or <see langword="null"/> to send none.</param>
+    public IChatClient CreateChatClient(string endpoint, Func<JsonElement?> stateProvider)
+    {
+        HttpClient http = httpClientFactory.CreateClient("agentserver");
+
+        // Build the default HTTP/SSE transport, then wrap it so each run carries the current state.
+        var defaults = new AGUIChatClientOptions(http, endpoint);
+
+        return new AGUIChatClient(new AGUIChatClientOptions
+        {
+            Transport = new StateForwardingTransport(defaults.Transport, stateProvider),
+            JsonSerializerOptions = defaults.JsonSerializerOptions,
+        });
     }
 }
