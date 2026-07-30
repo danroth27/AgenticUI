@@ -69,6 +69,53 @@ $commit = (git -C $AspNetCoreRepo rev-parse HEAD).Trim()
 $branch = (git -C $AspNetCoreRepo rev-parse --abbrev-ref HEAD).Trim()
 $stamp = (Get-Date).ToString("yyyy-MM-dd")
 
+# Files this sample patches on top of the snapshot. Sync-Tree overwrites them, so the patches must
+# be re-applied afterwards (or dropped once the equivalent fix lands upstream). Keep this list and
+# the "Local modifications" section of NOTICE.md in step.
+$patchedFiles = @(
+    "Engine\AgentContext.cs",
+    "Blocks\UIActionBlock.cs",
+    "Components\MessageInput.cs"
+)
+
+$localMods = @'
+## Local modifications
+
+This copy carries two small patches on top of the snapshot.
+
+### 1. Frontend tools should not wait for a human (`UIActionBlock`)
+
+While building this sample we found that a **frontend tool** (`UIActionBlock`) is treated by the
+engine exactly like a human-approval block (`FunctionApprovalBlock`): both implement
+`IInteractiveBlock`, so `AgentContext` waits for an *external* result and the run stalls until app
+code invokes the action. A frontend tool has no human step — the model declared it precisely so the
+browser runs it automatically — so this forced every consuming page to add glue (a `UIActionRunner`
+component) just to un-stall the run.
+
+This copy patches the engine to auto-invoke `UIActionBlock`s and to only enter `AwaitingInput` for
+blocks that genuinely need a person:
+
+- `Engine/AgentContext.cs` — auto-invoke `UIActionBlock`s; gate `AwaitingInput` on a non-`UIActionBlock`
+  interactive block.
+- `Blocks/UIActionBlock.cs` — make `InvokeAsync` idempotent and surface failures through the run.
+
+The behavior is verified end-to-end (frontend tool auto-runs and the run resumes; human approval
+still stalls at `AwaitingInput` until approved). The same fix is suggested upstream on PR #67673.
+
+### 2. The message box is not cleared when you submit with Enter
+
+- `Components/MessageInput.cs`
+
+Upstream commit `51a18baa` ("Clear the message textarea after sending") fixes the **send button**
+path, but submitting with **Enter** still leaves the text in the box. The browser inserts a newline
+for that keypress and raises `input` *after* the submit handler has run, so the stale text is
+re-rendered over the cleared value. The send button is unaffected because no `input` event competes
+with it.
+
+The patch ignores the single `input` event that follows an Enter submit. Verified: Enter sends and
+clears, Shift+Enter inserts a newline without sending, and the send button still sends and clears.
+'@
+
 $notice = @"
 # Bundled copy: Microsoft.AspNetCore.Components.AI
 
@@ -83,6 +130,9 @@ just a snapshot checked in so this sample builds on its own.
 - Snapshot date: $stamp
 - License: MIT (see https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)
 
+> The PR branch is regularly rebased, so recorded commits are force-pushed away. Compare the trees
+> rather than the SHAs when checking whether this copy is current.
+
 ## Why the source is copied in
 
 These components are **not yet published as a NuGet package**. Keeping a local copy of the source
@@ -94,6 +144,12 @@ packages.
 
 ``pwsh eng/sync-components-ai.ps1 -AspNetCoreRepo <path to dotnet/aspnetcore clone>``
 
+> **Note:** this sample carries local patches on top of the snapshot (see *Local modifications*
+> below). The sync script overwrites the copy, so re-apply them (or drop them once the equivalent
+> fix lands upstream).
+
+$localMods
+
 ## When the official package ships
 
 Delete ``src/BlazorAIComponents`` and replace the two ``ProjectReference`` items in
@@ -103,3 +159,6 @@ The assembly name and namespace are identical, so no code changes are required.
 Set-Content -Path (Join-Path $libDir "NOTICE.md") -Value $notice -Encoding utf8
 
 Write-Host "Copied $libCount library files and $genCount source-generator files from $branch@$($commit.Substring(0,10))."
+
+Write-Warning "This sample patches the following files. The sync just overwrote them - re-apply the patches (see NOTICE.md, 'Local modifications'), or drop them if the fix has landed upstream:"
+foreach ($p in $patchedFiles) { Write-Warning "  $p" }
