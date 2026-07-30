@@ -1,4 +1,5 @@
 @page "/human-in-the-loop"
+@using System.Globalization
 @inject AgentServerConnection Agents
 @implements IDisposable
 
@@ -16,7 +17,55 @@
     </div>
 
     <div class="scenario__chat">
-        <ChatPage Agent="_agent" Placeholder="Ask me to schedule something…" />
+        <ChatPage Agent="_agent" Placeholder="Ask me to schedule something…">
+            <WelcomeContent>
+                @* Replaces the built-in approval UI, which dumps the raw tool arguments as JSON. *@
+                <BlockRenderer TBlock="FunctionApprovalBlock" Context="block">
+                    <div class="approval-card">
+                        <div class="approval-card__header">
+                            <span class="approval-card__icon">📅</span>
+                            <div>
+                                <div class="approval-card__title">Approve this meeting?</div>
+                                <div class="approval-card__subtitle">
+                                    The agent wants to run <code>@block.ToolName</code>.
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (block.Arguments is { Count: > 0 })
+                        {
+                            <dl class="approval-card__args">
+                                @foreach (var arg in block.Arguments)
+                                {
+                                    <dt>@Humanize(arg.Key)</dt>
+                                    <dd>@FormatValue(arg.Value)</dd>
+                                }
+                            </dl>
+                        }
+
+                        @if (block.Status == ApprovalStatus.Pending)
+                        {
+                            <div class="approval-card__actions">
+                                <button class="sc-ai-btn sc-ai-btn--primary" @onclick="block.Approve">
+                                    Approve
+                                </button>
+                                <button class="sc-ai-btn sc-ai-btn--secondary" @onclick="() => block.Reject()">
+                                    Reject
+                                </button>
+                            </div>
+                        }
+                        else if (block.Status == ApprovalStatus.Approved)
+                        {
+                            <div class="approval-card__status approval-card__status--approved">✓ Approved</div>
+                        }
+                        else
+                        {
+                            <div class="approval-card__status approval-card__status--rejected">✗ Rejected</div>
+                        }
+                    </div>
+                </BlockRenderer>
+            </WelcomeContent>
+        </ChatPage>
     </div>
 </div>
 
@@ -31,4 +80,20 @@
     }
 
     public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+
+    private static string Humanize(string name) =>
+        string.IsNullOrEmpty(name)
+            ? name
+            : char.ToUpperInvariant(name[0]) + name[1..].Replace('_', ' ');
+
+    // The model passes times as ISO strings; show something a human would read.
+    private static string? FormatValue(object? value)
+    {
+        var text = value?.ToString();
+
+        return DateTime.TryParse(text, CultureInfo.InvariantCulture,
+                   DateTimeStyles.None, out var when)
+            ? when.ToString("ddd d MMM yyyy, h:mm tt", CultureInfo.CurrentCulture)
+            : text;
+    }
 }

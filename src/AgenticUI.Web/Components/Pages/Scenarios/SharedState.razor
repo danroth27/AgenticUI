@@ -42,7 +42,10 @@
                         <ul class="recipe__ingredients">
                             @foreach (var i in r.Ingredients)
                             {
-                                <li>@i.Icon @i.Name <span class="amount">@i.Amount</span></li>
+                                <li>
+                                    <span class="ingredient">@i.Icon @i.Name</span>
+                                    <span class="amount">@i.Amount</span>
+                                </li>
                             }
                         </ul>
                     }

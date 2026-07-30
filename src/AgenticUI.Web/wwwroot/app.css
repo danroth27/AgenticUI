@@ -168,8 +168,18 @@ body { color: var(--app-text); }
 .recipe__tags .tag { background: var(--app-brand-soft); color: var(--app-brand); border-radius: 999px;
     padding: .15rem .7rem; font-size: .8rem; }
 .recipe__ingredients { list-style: none; padding: 0; margin: 0; }
-.recipe__ingredients li { padding: .4rem 0; border-bottom: 1px solid #f0f0f0; }
-.recipe__ingredients .amount { color: var(--app-text-muted); float: right; }
+/* Two real columns: the amount can never drift into the next row the way a float does. */
+.recipe__ingredients li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 50%);
+    gap: .15rem 1rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #f0f0f0; }
+.recipe__ingredients li:last-child { border-bottom: none; }
+.recipe__ingredients .ingredient { min-width: 0; overflow-wrap: anywhere; }
+.recipe__ingredients .amount { color: var(--app-text-muted); text-align: right;
+    min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+    .recipe__ingredients li { grid-template-columns: minmax(0, 1fr); }
+    .recipe__ingredients .amount { text-align: left; }
+}
 .recipe__steps { margin: 0; padding-left: 1.25rem; }
 .recipe__steps li { margin-bottom: .5rem; line-height: 1.55; }
 
@@ -185,3 +195,22 @@ body { color: var(--app-text); }
 .ui-action-chip { display: inline-block; padding: .3rem .7rem; margin: .4rem 0; border-radius: 999px;
     background: var(--app-brand-soft); color: var(--app-brand); font-size: .85rem; }
 .ui-action-chip code { background: transparent; color: inherit; }
+
+/* Approval card — replaces the built-in JSON dump for approval-required tool calls. */
+.approval-card { background: var(--app-surface); border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); box-shadow: var(--app-shadow); padding: .9rem 1rem; margin: .5rem 0; }
+.approval-card__header { display: flex; gap: .65rem; align-items: flex-start; }
+.approval-card__icon { font-size: 1.35rem; line-height: 1.2; }
+.approval-card__title { font-weight: 600; }
+.approval-card__subtitle { color: var(--app-text-muted); font-size: .85rem; margin-top: .1rem; }
+.approval-card__subtitle code { background: transparent; color: inherit; }
+
+.approval-card__args { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .35rem .85rem;
+    margin: .8rem 0 0; padding: .7rem 0 0; border-top: 1px solid var(--app-border); }
+.approval-card__args dt { color: var(--app-text-muted); font-size: .85rem; }
+.approval-card__args dd { margin: 0; overflow-wrap: anywhere; }
+
+.approval-card__actions { display: flex; gap: .5rem; margin-top: .9rem; }
+.approval-card__status { margin-top: .9rem; font-weight: 600; font-size: .9rem; }
+.approval-card__status--approved { color: #2e9d5b; }
+.approval-card__status--rejected { color: #c0392b; }

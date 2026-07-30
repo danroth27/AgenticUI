@@ -60,9 +60,15 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             Description = "An assistant that books meetings, but asks for approval first.",
             ChatOptions = new ChatOptions
             {
-                Instructions = "You are a helpful scheduling assistant. When the user asks to schedule "
-                             + "something, call the book_meeting tool immediately. Never ask for "
-                             + "confirmation in text — the app collects the user's approval for you.",
+                Instructions = """
+                    You are a helpful scheduling assistant.
+
+                    - When the user asks to schedule something, call the book_meeting tool immediately.
+                      Never ask for confirmation in text — the app collects the user's approval for you.
+                    - If a book_meeting call comes back rejected, the user declined it. Acknowledge that
+                      in one short sentence and stop. Do NOT call book_meeting again for the same
+                      request, and do not propose an alternative unless the user asks for one.
+                    """,
                 Tools = [bookMeeting]
             }
         });
@@ -144,6 +150,11 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                       full list of ingredients (each with an icon, name and amount) and the step-by-step
                       instructions.
                     - Always include every ingredient the recipe needs, keeping any the user already added.
+                    - Keep the ingredient list simple so it stays readable in a compact card:
+                      `name` is just the ingredient (e.g. "Bread flour", "Olive oil") with no parenthetical
+                      notes or substitutions, and `amount` is a short quantity of at most about 20 characters
+                      (e.g. "3 1/2 cups", "2 tbsp", "1 clove"). Put substitutions, temperatures, prep notes
+                      and anything optional in the instructions instead — never in the name or amount.
                     - When the user only asks a question about the recipe, answer in plain text and do NOT call the tool.
                     - After calling the tool, reply with ONE short sentence in plain text. The recipe card
                       already shows the details, so never repeat them and never use markdown.
