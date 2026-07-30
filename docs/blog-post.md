@@ -66,7 +66,7 @@ builder.Services.AddAGUIServer();
 var chatClient = new OpenAIClient(
         new ApiKeyCredential(foundryApiKey),
         new OpenAIClientOptions { Endpoint = new Uri("https://<resource>.cognitiveservices.azure.com/openai/v1") })
-    .GetChatClient("gpt-4o-mini");
+    .GetChatClient("gpt-5-mini");
 
 var agent = chatClient.AsAIAgent(name: "AgenticChat", instructions: "You are a helpful assistant.");
 
