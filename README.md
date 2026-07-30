@@ -69,8 +69,8 @@ NuGet package later is a one-line change. Refresh the snapshot with
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/) (or just `dotnet run` the AppHost)
-- A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with two
-  deployments: a general chat model (`gpt-4o-mini`) and a reasoning model (`gpt-5-mini`).
+- A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
+  `gpt-5-mini` deployment (used for both the general chat and reasoning scenarios).
 
 ### Configure Foundry
 
@@ -82,7 +82,7 @@ dotnet user-secrets set "Parameters:foundry-api-key" "<key>" --project src/Agent
 ```
 
 Foundry exposes an OpenAI-compatible endpoint at `{resource}/openai/v1`, so the stock `OpenAIClient`
-works against it unchanged. Deployment names default to `gpt-4o-mini` and `gpt-5-mini`; override with
+works against it unchanged. Both deployment names default to `gpt-5-mini`; override with
 `Parameters:foundry-model` / `Parameters:foundry-reasoning-model` (or the `FOUNDRY_MODEL` /
 `FOUNDRY_REASONING_MODEL` env vars).
 
