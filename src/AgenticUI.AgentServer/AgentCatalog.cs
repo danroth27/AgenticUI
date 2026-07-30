@@ -4,7 +4,6 @@ using System.Text.Json;
 using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;
 using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
-using AgenticUI.AgentServer.Scenarios.Reasoning;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -17,10 +16,10 @@ namespace AgenticUI.AgentServer;
 /// Builds the <see cref="AIAgent"/> instances for each AG-UI demo scenario. Each agent is mapped to
 /// its own AG-UI endpoint in <c>Program.cs</c> via <c>MapAGUIServer</c>.
 /// </summary>
-public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChatClient)
+public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningChatClient)
 {
     private readonly ChatClient _chatClient = chatClient;
-    private readonly ChatClient _reasoningChatClient = reasoningChatClient;
+    private readonly IChatClient _reasoningChatClient = reasoningChatClient;
 
     /// <summary>Basic streaming chat — text in, streamed text out.</summary>
     public AIAgent CreateAgenticChat() =>
@@ -151,19 +150,21 @@ public sealed class AgentCatalog(ChatClient chatClient, ChatClient reasoningChat
     }
 
     /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
-    public AIAgent CreateReasoning()
-    {
-        // The think-splitter must decorate the IChatClient, not the agent: the agent layer strips
-        // <think>…</think> out of the response text before a DelegatingAIAgent would ever see it.
-        IChatClient reasoningClient = new ThinkSplittingChatClient(this._reasoningChatClient.AsIChatClient());
-
-        return reasoningClient.AsAIAgent(
-            name: "ReasoningAgent",
-            description: "A reasoning model that shows its thinking.",
-            instructions: "Think step by step inside your reasoning, then give a final answer of one or "
-                + "two plain sentences. The final answer must be plain prose: no LaTeX, no math "
-                + "notation, no markdown, no bullet points, and no step-by-step recap.");
-    }
+    public AIAgent CreateReasoning() =>
+        this._reasoningChatClient.AsAIAgent(new ChatClientAgentOptions
+        {
+            Name = "ReasoningAgent",
+            Description = "A reasoning model that shows its thinking.",
+            ChatOptions = new ChatOptions
+            {
+                // Keep the answer plain: the Blazor AI components render text, not markdown. Avoid
+                // asking for brevity — instructions like "answer in one or two sentences, no
+                // step-by-step recap" measurably suppress the model's reasoning summary, leaving the
+                // thought-process panel empty.
+                Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
+                    + "notation, or bullet points."
+            }
+        });
 
     /// <summary>[Test] A sequential workflow (researcher -> reporter) exposed as an AG-UI agent.</summary>
     public AIAgent CreateWorkflow()

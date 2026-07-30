@@ -4,8 +4,7 @@ A hands-on tour of **AG-UI** (the [Agent User Interaction Protocol](https://docs
 in .NET. The backend hosts agents built with the **Microsoft Agent Framework (MAF)** and the
 **AG-UI C# SDK**; the frontend is a **Blazor** app that consumes them with the new
 in-progress Blazor AI components. [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/)
-wires the two together, and everything runs on **free [GitHub Models](https://github.com/marketplace/models)** —
-no paid Azure or OpenAI resources required.
+wires the two together, and everything runs on **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)**.
 
 ## What it demonstrates
 
@@ -30,13 +29,13 @@ flowchart LR
     end
     Web -- "AGUIChatClient (IChatClient) over HTTP + SSE" --> Server
     Server -- "MapAGUIServer per scenario" --> Agents["MAF AIAgents"]
-    Agents -- "IChatClient" --> GH["GitHub Models"]
+    Agents -- "IChatClient" --> GH["Microsoft Foundry"]
     Web -. "UIAgent + Blazor AI components" .-> Web
 ```
 
 - **`AgenticUI.AgentServer`** — ASP.NET Core app. Uses
   `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (`AddAGUIServer()` + `MapAGUIServer("/route", agent)`)
-  to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by GitHub Models via
+  to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by Microsoft Foundry via
   `Microsoft.Agents.AI.OpenAI`.
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an
   `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a
@@ -70,20 +69,28 @@ NuGet package later is a one-line change. Refresh the snapshot with
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/) (or just `dotnet run` the AppHost)
-- A **GitHub token with the `models` permission**. The GitHub CLI token works:
-  `gh auth token` (with the `models:read` scope).
+- A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with two
+  deployments: a general chat model (`gpt-4o-mini`) and a reasoning model (`gpt-5-mini`).
 
-### Configure the GitHub Models token
+### Configure Foundry
 
-Set it as an AppHost user-secret (recommended):
+Set the endpoint and key as AppHost user-secrets (recommended):
 
 ```bash
-dotnet user-secrets set "Parameters:github-token" "$(gh auth token)" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.cognitiveservices.azure.com/openai/v1" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-api-key" "<key>" --project src/AgenticUI.AppHost
 ```
 
-The model defaults to `openai/gpt-4o-mini`; override with `Parameters:github-model`. The reasoning
-scenario uses a separate reasoning model (`deepseek/deepseek-r1` by default; override with
-`Parameters:github-reasoning-model` or the `GITHUB_REASONING_MODEL` env var).
+Foundry exposes an OpenAI-compatible endpoint at `{resource}/openai/v1`, so the stock `OpenAIClient`
+works against it unchanged. Deployment names default to `gpt-4o-mini` and `gpt-5-mini`; override with
+`Parameters:foundry-model` / `Parameters:foundry-reasoning-model` (or the `FOUNDRY_MODEL` /
+`FOUNDRY_REASONING_MODEL` env vars).
+
+> **Why a separate reasoning path?** Reasoning models only return their reasoning summaries through
+> the OpenAI **Responses** API — chat completions spend the same reasoning tokens but return no
+> reasoning text. So the reasoning scenario builds its client with `GetResponsesClient()` and opts in
+> via `ResponseReasoningOptions.ReasoningSummaryVerbosity`. `Microsoft.Extensions.AI` maps the
+> summaries to `TextReasoningContent`, which the MAF AG-UI adapter emits as `REASONING_*` events.
 
 ### Run
 

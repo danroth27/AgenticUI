@@ -21,10 +21,10 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-// Build the per-scenario agents backed by the free GitHub Models endpoint.
-var githubModels = GitHubModels.ReadOptions(app.Configuration);
-var chatClient = GitHubModels.CreateChatClient(githubModels);
-var reasoningChatClient = GitHubModels.CreateChatClient(githubModels, githubModels.ReasoningModel);
+// Build the per-scenario agents backed by Microsoft Foundry.
+var foundry = Foundry.ReadOptions(app.Configuration);
+var chatClient = Foundry.CreateChatClient(foundry);
+var reasoningChatClient = Foundry.CreateReasoningChatClient(foundry);
 var jsonOptions = app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
 var agents = new AgentCatalog(chatClient, reasoningChatClient);
 
@@ -49,8 +49,8 @@ app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
 app.MapGet("/", () => Results.Ok(new
 {
     service = "AgenticUI AG-UI agent server",
-    model = githubModels.Model,
-    reasoningModel = githubModels.ReasoningModel,
+    model = foundry.Model,
+    reasoningModel = foundry.ReasoningModel,
     endpoints = new[]
     {
         "/agentic_chat",

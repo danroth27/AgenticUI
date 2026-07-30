@@ -16,8 +16,9 @@ Built against:
 - **Client-as-`IChatClient` is the right shape.** `new AGUIChatClient(new AGUIChatClientOptions(httpClient, "/route"))`
   turns an AG-UI endpoint into a standard `IChatClient`, so the Blazor AI components' `UIAgent` consumes it
   with zero AG-UI-specific code.
-- **GitHub Models is a great free backend.** Pointing an `OpenAIClient` at `https://models.github.ai/inference`
-  with a GitHub token (the `gh auth token` works) and calling `.AsAIAgent(...)` was frictionless.
+- **Microsoft Foundry drops straight in.** Foundry exposes an OpenAI-compatible endpoint at
+  `{resource}/openai/v1`, so pointing a stock `OpenAIClient` at it (the API key is accepted as a bearer
+  token) and calling `.AsAIAgent(...)` was frictionless — no Azure-specific client required.
 - **Streaming chat, backend tools, human-in-the-loop approvals, shared/predictive/plan state, and
   reasoning all worked end-to-end** (state and reasoning after the fixes below). The
   `ApprovalRequiredAIFunction` → AG-UI interrupt → `ToolApprovalRequestContent` → Blazor
@@ -167,12 +168,23 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
 
 ## Minor observations (not bugs)
 
-- **Reasoning models on GitHub Models emit `<think>…</think>` inline** in the message content rather
-  than a separate `reasoning_content` field, so `Microsoft.Extensions.AI` doesn't auto-map it to
-  `TextReasoningContent`. This sample adds a small streaming `ReasoningAgent` that splits the `<think>`
-  block out and re-emits it as `TextReasoningContent` (which then flows through AG-UI `REASONING_*`
-  events to the Blazor reasoning block). A reusable "`<think>` splitter" chat-client middleware in
-  `Microsoft.Extensions.AI` (or MAF) would remove this per-app glue.
+- **Reasoning summaries are opt-in, and the opt-in is easy to lose.** Reasoning models only return
+  their reasoning text through the OpenAI **Responses** API (`GetResponsesClient()`), and only when
+  `ResponseReasoningOptions.ReasoningSummaryVerbosity` is set — chat completions spend the same
+  reasoning tokens (visible in `usage.completion_tokens_details.reasoning_tokens`) but return no
+  reasoning text at all. Setting that option via the agent's `ChatOptions.RawRepresentationFactory`
+  works for a direct `RunStreamingAsync` call, but is **silently dropped over AG-UI**: an AG-UI run
+  supplies its own `ChatOptions` (tools, context), which replaces the agent's. The fix is to apply the
+  option in a `DelegatingChatClient` so it can't be lost. A first-class
+  `ChatOptions.ReasoningEffort` / `ReasoningSummary` on `Microsoft.Extensions.AI` would remove the
+  provider-specific `RawRepresentationFactory` glue entirely, and MAF merging (rather than replacing)
+  agent `ChatOptions` would remove the sharp edge.
+- **`ChatClientBuilder.ConfigureOptions(...)` did not apply the `RawRepresentationFactory`** in this
+  setup (0 reasoning updates), while an equivalent hand-written `DelegatingChatClient` did (104).
+  Worth a closer look — if this is by design it is surprising; if not, it's a bug.
+- **Low reasoning effort yields no summary.** At the default effort an easy question can be answered
+  with so little deliberation that the model returns no summary, leaving the UI's thought-process
+  panel empty. Raising `ReasoningEffortLevel` makes it deterministic.
 - **HITL model behavior:** `gpt-4o-mini` often replies "shall I proceed?" in text before actually calling
   an approval-required tool. Tightening the system prompt (or using a stronger model) makes it call the
   tool on the first turn. Not a framework issue.
@@ -196,7 +208,7 @@ Found while bringing the C# Learn docs to parity with the Python docs. Each was 
    heuristic auto-approval middleware rather than a per-tool mode enum. Added in
    [agent-framework#6335](https://github.com/microsoft/agent-framework/pull/6335)
    (closes [#6083](https://github.com/microsoft/agent-framework/issues/6083)); shipped in
-   `Microsoft.Agents.AI` **1.15.0**. **Verified end-to-end over AG-UI** (GitHub Models): a `$500`
+   `Microsoft.Agents.AI` **1.15.0**. **Verified end-to-end over AG-UI**: a `$500`
    `transfer_funds` call was auto-approved and streamed its `TOOL_CALL_RESULT` with no interrupt, while a
    `$5,000` call raised `RUN_FINISHED` `outcome.type="interrupt"` for the user to confirm — from a single
    tool registration. Tool approval (always/never, selective, conditional) is a general Agent

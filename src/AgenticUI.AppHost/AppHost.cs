@@ -1,17 +1,22 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// GitHub Models configuration. The token is a secret parameter; provide it via AppHost user-secrets:
-//   dotnet user-secrets set "Parameters:github-token" "$(gh auth token)"
-// The model has a sensible default and can be overridden with Parameters:github-model.
-var githubToken = builder.AddParameter("github-token", secret: true);
-var githubModel = builder.AddParameter("github-model", value: "openai/gpt-4o-mini");
-var githubReasoningModel = builder.AddParameter("github-reasoning-model", value: "microsoft/phi-4-mini-reasoning");
+// Microsoft Foundry configuration. The endpoint and API key are secret parameters; provide them via
+// AppHost user-secrets:
+//   dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.cognitiveservices.azure.com/openai/v1"
+//   dotnet user-secrets set "Parameters:foundry-api-key" "<key>"
+// The deployment names have sensible defaults and can be overridden with Parameters:foundry-model
+// and Parameters:foundry-reasoning-model.
+var foundryEndpoint = builder.AddParameter("foundry-endpoint", secret: true);
+var foundryApiKey = builder.AddParameter("foundry-api-key", secret: true);
+var foundryModel = builder.AddParameter("foundry-model", value: "gpt-4o-mini");
+var foundryReasoningModel = builder.AddParameter("foundry-reasoning-model", value: "gpt-5-mini");
 
 // The AG-UI agent server: hosts one AG-UI endpoint per demo scenario (MAF + AG-UI C# SDK).
 var agentServer = builder.AddProject<Projects.AgenticUI_AgentServer>("agentserver")
-    .WithEnvironment("GITHUB_TOKEN", githubToken)
-    .WithEnvironment("GITHUB_MODEL", githubModel)
-    .WithEnvironment("GITHUB_REASONING_MODEL", githubReasoningModel);
+    .WithEnvironment("FOUNDRY_ENDPOINT", foundryEndpoint)
+    .WithEnvironment("FOUNDRY_API_KEY", foundryApiKey)
+    .WithEnvironment("FOUNDRY_MODEL", foundryModel)
+    .WithEnvironment("FOUNDRY_REASONING_MODEL", foundryReasoningModel);
 
 // The Blazor front end: consumes the AG-UI endpoints via the Blazor AI components.
 builder.AddProject<Projects.AgenticUI_Web>("web")

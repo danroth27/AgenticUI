@@ -21,8 +21,8 @@ has first-class **.NET** support. In this post we'll tour what's possible today 
 - **Blazor** with the new in-progress Blazor AI components, and
 - **.NET Aspire** to run it all.
 
-Everything below runs on **free [GitHub Models](https://github.com/marketplace/models)** — no paid
-Azure or OpenAI account needed. The full sample is on GitHub:
+Everything below runs on **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)**. The
+full sample is on GitHub:
 **[danroth27/AgenticUI](https://github.com/danroth27/AgenticUI)**.
 
 ## What is AG-UI?
@@ -50,7 +50,7 @@ your agent is just an `IChatClient` (or a MAF `AIAgent`). On the client, an AG-U
 flowchart LR
     Web["Blazor front end<br/>UIAgent + Blazor AI components"]
     Server["ASP.NET Core<br/>MapAGUIServer(agent)"]
-    Model["GitHub Models / Azure OpenAI"]
+    Model["Microsoft Foundry"]
     Web -- "AGUIChatClient (IChatClient)<br/>HTTP + SSE" --> Server
     Server -- "IChatClient" --> Model
 ```
@@ -62,11 +62,11 @@ Add the hosting package and map an agent to a route:
 ```csharp
 builder.Services.AddAGUIServer();
 
-// Any MAF AIAgent works. Here, an OpenAI-compatible client (GitHub Models).
+// Any MAF AIAgent works. Here, an OpenAI-compatible client (Microsoft Foundry).
 var chatClient = new OpenAIClient(
-        new ApiKeyCredential(githubToken),
-        new OpenAIClientOptions { Endpoint = new Uri("https://models.github.ai/inference") })
-    .GetChatClient("openai/gpt-4o-mini");
+        new ApiKeyCredential(foundryApiKey),
+        new OpenAIClientOptions { Endpoint = new Uri("https://<resource>.cognitiveservices.azure.com/openai/v1") })
+    .GetChatClient("gpt-4o-mini");
 
 var agent = chatClient.AsAIAgent(name: "AgenticChat", instructions: "You are a helpful assistant.");
 
@@ -180,13 +180,15 @@ The agent plans work with a `create_plan` tool (a `STATE_SNAPSHOT`) and advances
 `update_plan_step` (a `STATE_DELTA` — an RFC 6902 JSON Patch). The UI renders live plan progress, checking
 off steps as the agent completes them.
 
-## Running it on free GitHub Models
+## Running it on Microsoft Foundry
 
-GitHub Models exposes an OpenAI-compatible endpoint, so it drops straight into `Microsoft.Extensions.AI`.
-All you need is a GitHub token with the `models` permission (the GitHub CLI token works):
+Foundry exposes an OpenAI-compatible endpoint at `{resource}/openai/v1`, so it drops straight into
+`Microsoft.Extensions.AI` — the stock `OpenAIClient` works unchanged. All you need is the endpoint and
+an API key:
 
 ```bash
-dotnet user-secrets set "Parameters:github-token" "$(gh auth token)" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.cognitiveservices.azure.com/openai/v1" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-api-key" "<key>" --project src/AgenticUI.AppHost
 dotnet run --project src/AgenticUI.AppHost
 ```
 
