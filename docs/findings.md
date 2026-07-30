@@ -186,7 +186,8 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
   did **not** compensate — `Medium` was worse than the default. Constrain format, never length.
 - **HITL model behavior:** `gpt-4o-mini` often replies "shall I proceed?" in text before actually calling
   an approval-required tool. Tightening the system prompt (or using a stronger model) makes it call the
-  tool on the first turn. Not a framework issue.
+  tool on the first turn. Not a framework issue. Since switching the default deployment to `gpt-5-mini`,
+  the scenario emits `TOOL_CALL_START` with no preceding text message.
 - **AG-UI hosting is still preview** (`Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview) even
   though the core `Microsoft.Agents.AI` packages are stable 1.15.0. Worth calling out in docs/blog.
 
