@@ -88,8 +88,10 @@ works against it unchanged. Both deployment names default to `gpt-5-mini`; overr
 > **Why a separate reasoning path?** Reasoning models only return their reasoning summaries through
 > the OpenAI **Responses** API — chat completions spend the same reasoning tokens but return no
 > reasoning text. So the reasoning scenario builds its client with `GetResponsesClient()` and opts in
-> via `ResponseReasoningOptions.ReasoningSummaryVerbosity`. `Microsoft.Extensions.AI` maps the
-> summaries to `TextReasoningContent`, which the MAF AG-UI adapter emits as `REASONING_*` events.
+> via the provider-neutral `ChatOptions.Reasoning`
+> (`new ReasoningOptions { Output = ReasoningOutput.Full }`). `Microsoft.Extensions.AI` maps that to
+> the Responses API's reasoning summary setting and surfaces the summaries as `TextReasoningContent`,
+> which the MAF AG-UI adapter emits as `REASONING_*` events.
 
 ### Run
 

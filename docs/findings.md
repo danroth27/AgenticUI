@@ -8,6 +8,11 @@ Built against:
 - Blazor AI components from `dotnet/aspnetcore` PR #67673 (branch `javiercn/components-ai-full`)
 - .NET 10.0.302 SDK, .NET Aspire 13.4
 
+> **Last re-verified 2026-07-31.** Every upstream issue/PR link in this document was checked live on
+> that date, and the reasoning and predictive-state findings were re-confirmed against the actual
+> source of `AGUI.Server` 0.0.4, `Microsoft.Extensions.AI` v10.6.0, and `Microsoft.Agents.AI`
+> 1.15.0 (not just public API surface).
+
 ## What worked well
 
 - **Server hosting is clean.** `builder.Services.AddAGUIServer()` + `app.MapAGUIServer("/route", agent)`
@@ -27,39 +32,57 @@ Built against:
 
 ## Bugs / issues found
 
-> **Upstream tracking status (checked 2026-07-23).** Each finding was mapped to the repo that owns
+> **Upstream tracking status (re-checked 2026-07-31).** Each finding was mapped to the repo that owns
 > the code and checked for existing issues. Detailed drafts are kept as separate working notes
-> (outside this sample repo).
+> (outside this sample repo). Every link below was verified live on 2026-07-31.
 >
 > - **Bug #1 (DataContent state dropped)** → **RESOLVED, not a bug.** Javier confirmed (2026-07-23)
 >   that emitting state as `DataContent("application/json")` was a pre-public-API hack and is
 >   intentionally unsupported; the contract is `RawRepresentation = StateSnapshotEvent` (which our
 >   sample and docs already use). The remaining actionable item is the stale `AGUIDojoServer` sample
->   that still uses the removed hack.
-> - **Bug #4 (stale `ag-ui` MAF example)** → `ag-ui-protocol/ag-ui`. **Not tracked** → draft issue
->   prepared (pinned to an old preview; uses the removed `AddAGUI`/`MapAGUI` and old state contract).
+>   that still uses the removed hack — now tracked, see bug #4.
+> - **Bug #4 (stale `ag-ui` MAF example)** → **tracked** at
+>   [ag-ui#2237](https://github.com/ag-ui-protocol/ag-ui/issues/2237) (filed 2026-07-23, still open):
+>   pinned to an old preview; uses the removed `AddAGUI`/`MapAGUI` and old state contract.
 > - **Bug #3 (`UIActionBlock` no auto-invoke)** → `dotnet/aspnetcore` (Blazor AI components, PR #67673).
->   **Fixed in our components copy** and verified end-to-end; drafted as a PR comment, not an issue.
+>   **Fixed in our components copy** and verified end-to-end; **posted** as a PR comment (2026-07-23),
+>   not an issue.
 > - **Bug #2 (client state not auto-sent)** → **reframed as an API-shape gap, not an SDK bug.**
 >   `AGUIChatClient` *does* forward `RunAgentInput.State`/`ParentRunId` when set via
 >   `RawRepresentationFactory` (confirmed by ag-ui#2151); the gap is that the components have an
->   inbound `StateMapper` but no symmetric outbound hook. Covered in the PR comment.
+>   inbound `StateMapper` but no symmetric outbound hook. Covered in the same PR comment.
 > - **Conditional approval** → **resolved**: MAF supports argument-based conditional approval via
 >   `AIAgentBuilder.UseToolApproval` + `ToolApprovalAgentOptions.AutoApprovalRules`
->   ([agent-framework#6335](https://github.com/microsoft/agent-framework/pull/6335), shipped in 1.15.0,
->   verified end-to-end over AG-UI). The MEAI `ApprovalRequiredAIFunction` primitive itself stays binary
->   ([dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449)). See finding #1.
+>   ([agent-framework#6335](https://github.com/microsoft/agent-framework/pull/6335), **merged**, shipped
+>   in 1.15.0, verified end-to-end over AG-UI). The MEAI `ApprovalRequiredAIFunction` primitive itself
+>   stays binary ([dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449), open).
+>   See finding #1.
 > - **Workflow-over-AG-UI events not surfaced** → already open at
 >   [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494) —
 >   draft comment prepared, do not duplicate.
-> - **HITL doc/sample hackery** → fixed: MAF docs PR #430 rewrote the HITL page to the idiomatic
->   pattern, and MAF sample PR #7295 simplifies Step04 (removed ~470 lines of approval middleware).
-> - **`WithInMemorySessionStore()` throws HTTP 500 by default** → `WithInMemorySessionStore()` defaults
+> - **HITL doc/sample hackery** → fixes **proposed but not yet merged**: MAF docs
+>   [PR #430](https://github.com/MicrosoftDocs/semantic-kernel-docs/pull/430) rewrites the HITL page to
+>   the idiomatic pattern, and MAF sample
+>   [PR #7295](https://github.com/microsoft/agent-framework/pull/7295) simplifies Step04 (removes ~470
+>   lines of approval middleware). **Both were still open as of 2026-07-31.**
+> - **`WithInMemorySessionStore()` throws HTTP 500 by default** → **NOT TRACKED UPSTREAM.**
+>   `WithInMemorySessionStore()` defaults
 >   to `withIsolation: true`, which requires a `SessionIsolationKeyProvider`; without one the AG-UI
 >   endpoint returns 500 (`InvalidOperationException: Session isolation key is required...`). Found while
 >   verifying Javier's idiomatic getting-started wiring. Docs now use `WithInMemorySessionStore(withIsolation: false)`
 >   for single-user servers. **Worth raising with Javier** (the draft snippet and possibly the default
->   are a footgun for the getting-started path).
+>   are a footgun for the getting-started path). Searched `microsoft/agent-framework` on 2026-07-31 —
+>   no existing issue covers this.
+> - **No public `IAGUITransport` implementation** → **NOT TRACKED UPSTREAM.** `AGUI.Client` exports the
+>   `IAGUITransport` interface and `AGUIChatClientOptions.Transport` is settable, but the default
+>   HTTP/SSE transport is internal and no public implementation is exported. Decorating the transport
+>   (the natural way to attach outbound client state — see bug #2) therefore requires constructing a
+>   throwaway `AGUIChatClientOptions` purely to harvest its `.Transport`. Found while prototyping the
+>   shared-state editor; see the `shared-state-editor` branch, which is deliberately unmerged.
+> - **Predictive state cannot be built at all** → see finding #7. Partially covered by
+>   [ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245), but that issue is framed as an
+>   *ergonomics* gap ("~140 lines vs Python's 2"). The stronger 2026-07-30 finding — that the low-level
+>   `MapCall` route named in the issue cannot work either — **is not yet communicated upstream.**
 >
 > **Idiomatic-pattern reconciliation (Javier's draft merged, 2026-07-23):** the .NET AG-UI state docs
 > and the AgenticUI sample now use the declarative `AGUIStreamOptions.MapResultAsStateSnapshot /
@@ -168,17 +191,22 @@ new `AddAGUIServer()` / `MapAGUIServer()` names. (A draft update is being prepar
 
 ## Minor observations (not bugs)
 
-- **Reasoning summaries are opt-in, and the opt-in is easy to lose.** Reasoning models only return
-  their reasoning text through the OpenAI **Responses** API (`GetResponsesClient()`), and only when
-  `ResponseReasoningOptions.ReasoningSummaryVerbosity` is set — chat completions spend the same
-  reasoning tokens (visible in `usage.completion_tokens_details.reasoning_tokens`) but return no
-  reasoning text at all. Setting that option via the agent's `ChatOptions.RawRepresentationFactory`
-  is enough: MAF *merges* agent-level options into each run rather than replacing them
-  (`ChatClientAgent.CreateConfiguredChatOptions` chains the two factories), so the opt-in survives an
-  AG-UI run, which supplies only tools and context. Measured 22/25 runs over the AG-UI wire. A
-  first-class `ChatOptions.ReasoningEffort` / `ReasoningSummary` on `Microsoft.Extensions.AI` would
-  still be welcome — it would remove the provider-specific `RawRepresentationFactory` glue entirely.
-  `ChatClientBuilder.ConfigureOptions(...)` applies the same option correctly (5/5).
+- **Reasoning summaries are opt-in, but the opt-in is now provider-neutral (updated 2026-07-31).**
+  Reasoning models only return their reasoning text through the OpenAI **Responses** API
+  (`GetResponsesClient()`) — chat completions spend the same reasoning tokens (visible in
+  `usage.completion_tokens_details.reasoning_tokens`) but return no reasoning text at all. The opt-in
+  itself no longer needs provider-specific glue: **`ChatOptions.Reasoning` shipped in
+  `Microsoft.Extensions.AI` 10.6.0** (`dotnet/extensions#7192`, closed completed), so
+  `Reasoning = new ReasoningOptions { Output = ReasoningOutput.Full }` replaces the hand-written
+  `RawRepresentationFactory` + `ResponseReasoningOptions` entirely. Verified in source at v10.6.0:
+  `OpenAIResponsesChatClient` maps `ReasoningOutput.Summary` → `ReasoningSummaryVerbosity.Concise` and
+  `ReasoningOutput.Full` → `Detailed`; `ChatClientAgent.CreateConfiguredChatOptions` copies it with
+  `requestChatOptions.Reasoning ??= agentOptions.ChatOptions.Reasoning`, so the opt-in still survives
+  an AG-UI run, which supplies only tools and context. Measured 5/5 runs over the AG-UI wire after
+  the switch (avg 2187 chars). `ReasoningOptions` / `ReasoningEffort` / `ReasoningOutput` are stable
+  APIs — no experimental suppression needed. **Sharp edge:** the OpenAI client applies it with
+  `result.ReasoningOptions ??= ...`, so a `RawRepresentationFactory` that sets `ReasoningOptions`
+  silently *wins* over `ChatOptions.Reasoning`; never set both.
 - **Prompting for brevity suppresses the reasoning summary.** Measured against `gpt-5-mini`, 5 trials
   per variant: instructions asking for "one or two sentences, no step-by-step recap" produced a
   summary in only **1–2 of 5** runs, while instructions constraining *formatting* only ("plain prose,
@@ -236,19 +264,41 @@ Found while bringing the C# Learn docs to parity with the Python docs. Each was 
 7. **No predictive state updates at all** (streaming tool *arguments* into state). C# has declarative
    helpers for tool *results* (`AGUIStreamOptions.MapResultAsStateSnapshot` / `MapResultAsStateDelta`), but
    the predictive case has no declarative equivalent of Python's `predict_state_config`, *and* the
-   hand-rolled low-level path can't reproduce it either: `AGUIStreamOptions.MapCall` is typed
-   `Func<FunctionCallContent, IEnumerable<BaseEvent>>` — a **complete** call, invoked **once**.
-   `Microsoft.Extensions.AI` coalesces streamed tool-call argument deltas before surfacing them, so by
-   the time `MapCall` runs the arguments are already final. Measured on the wire: `TOOL_CALL_START` /
-   `TOOL_CALL_ARGS` / `TOOL_CALL_END` all arrive at the same millisecond, and the "progressive" snapshots
-   a `MapCall` loop emits are 137 events in **9 ms** — a fake stream synthesized from an
-   already-complete string. (Contrast `/agentic_generative_ui`, which is genuinely paced: 1 snapshot +
-   10 deltas over 34.5 s, because each delta corresponds to real agent progress.) Surfacing partial
-   arguments today would require provider-specific `RawRepresentation` digging.
-   **This sample no longer ships a predictive-state scenario for that reason.**
+   hand-rolled low-level path can't reproduce it either. **Root cause, confirmed in source
+   (2026-07-31), not inferred:**
+
+   - `AGUI.Server`'s `ChatResponseUpdateAGUIExtensions` invokes `MapCall` from its
+     `case FunctionCallContent fcc:` branch, once per `FunctionCallContent` it sees. It performs no
+     buffering of its own.
+   - `Microsoft.Extensions.AI` never surfaces a *partial* `FunctionCallContent`. In
+     `OpenAIChatClient` (chat completions) the streamed argument deltas are appended to a
+     `StringBuilder` on a private `FunctionCallInfo`, and the single `FunctionCallContent` is
+     constructed **after the `await foreach` over the provider stream has completed** — the code
+     comment reads *"Now that we've received all updates, combine any for function calls into a
+     single item to yield."* In `OpenAIResponsesChatClient` the equivalent happens at
+     `StreamingResponseOutputItemDoneUpdate`; `OutputItemAdded` yields nothing, and there is no case
+     for function-call argument deltas at all.
+
+   So `MapCall` can only ever fire once, *after* the model has finished writing the whole argument.
+   Any "progressive" snapshots emitted from inside it are synthesized from an already-complete
+   string. Measured on the wire: `TOOL_CALL_START` / `TOOL_CALL_ARGS` / `TOOL_CALL_END` all arrive at
+   the same millisecond, and the snapshots a `MapCall` loop emits are 137 events in **9 ms**.
+   (Contrast `/agentic_generative_ui`, which is genuinely paced: 1 snapshot + 10 deltas over 34.5 s,
+   because each delta corresponds to real agent progress.)
+
+   The deltas are not *lost*, only un-abstracted: both clients set `RawRepresentation` on the
+   per-update `ChatResponseUpdate` (chat completions on every update; the Responses client via its
+   `default:` branch, which yields a contentless update carrying the raw object). So predictive state
+   is reachable today only by inserting a **provider-specific `DelegatingChatClient`** that reads
+   `StreamingChatCompletionUpdate.ToolCallUpdates[].FunctionArgumentsUpdate`, re-accumulates and
+   partially parses the incomplete JSON itself, and emits `StateSnapshotEvent`s through
+   `RawRepresentation` — the one hook `AGUI.Server` honors. That is not something a sample should
+   teach, so **this sample no longer ships a predictive-state scenario.**
+
    Tracked by [ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245) (SDK declarative
    mapping) and the broader [agent-framework#4177](https://github.com/microsoft/agent-framework/issues/4177)
-   (`StateBag` auto-emission + arg→state mapping; agent-framework core).
+   (`StateBag` auto-emission + arg→state mapping; agent-framework core). **Note:** #2245 is framed as
+   an ergonomics gap; the "the low-level route cannot work either" evidence above is not yet on it.
 
 Verified-and-documented C# scenarios (tested, not guessed): agentic chat, backend tools, frontend tools,
 human-in-the-loop approval (approve→resume), **selective approval** (mixed approved/unapproved tools in
@@ -269,9 +319,12 @@ Found while auditing the docs for idiomatic patterns. These are ergonomics/compl
    client). *Recommendation: rewrite the Step04 sample to the idiomatic pattern; it currently teaches a
    workaround as if it were the required approach.* (The docs now show the idiomatic pattern.)
 
-2. **Approval flow requires `#pragma warning disable MEAI001`.** `ApprovalRequiredAIFunction`,
-   `ToolApprovalRequestContent`, and `ToolApprovalResponseContent` are all evaluation-only, so idiomatic
-   approval code can't avoid the pragma. Rough edge for a core scenario.
+2. **~~Approval flow requires `#pragma warning disable MEAI001`~~ — RESOLVED (updated 2026-07-31).**
+   `ApprovalRequiredAIFunction`, `ToolApprovalRequestContent`, and `ToolApprovalResponseContent` no
+   longer carry `[Experimental("MEAI001")]` as of `Microsoft.Extensions.AI.Abstractions` 10.6.0
+   (verified in source and by building this sample with the suppression removed). The `MEAI001`
+   entry has been dropped from `AgenticUI.AgentServer.csproj`; only `OPENAI001` remains, and only
+   for `GetResponsesClient()` / `AsIChatClient(ResponsesClient)`.
 
 3. **Client resume — RESOLVED (this was our over-engineering, not an API gap).** Approve→resume works
    transparently: reuse the same `AgentSession` and send the `ToolApprovalResponseContent` back —
@@ -282,6 +335,13 @@ Found while auditing the docs for idiomatic patterns. These are ergonomics/compl
 
 4. **Shared-state input requires manual `RunAgentInput.State` plumbing** (also via
    `RawRepresentationFactory`), and the Blazor `UIAgent<TState>` doesn't wire it automatically (bug #2).
-   Python surfaces shared state more directly.
+   Python surfaces shared state more directly. Attempting to close this from the client side runs into
+   a second gap: `AGUI.Client` exports no public `IAGUITransport` implementation, so decorating the
+   transport means harvesting the internal default from a throwaway `AGUIChatClientOptions`. Both gaps
+   are demonstrated on the deliberately-unmerged `shared-state-editor` branch.
 
-5. **No approval "modes"** (see limitations list) — only always/never; no `conditional`.
+5. **~~No approval "modes"~~ — RESOLVED (updated 2026-07-31).** Superseded by limitation #1: MAF
+   supports conditional approval via `AIAgentBuilder.UseToolApproval` +
+   `ToolApprovalAgentOptions.AutoApprovalRules` (shipped in 1.15.0, verified end-to-end over AG-UI).
+   Only the low-level MEAI `ApprovalRequiredAIFunction` primitive remains binary
+   ([dotnet/extensions#7449](https://github.com/dotnet/extensions/issues/7449)).
