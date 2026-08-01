@@ -8,7 +8,6 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
-using OpenAI.Responses;
 
 namespace AgenticUI.AgentServer;
 
@@ -177,15 +176,11 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 // thought-process panel empty.
                 Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
                     + "notation, or bullet points.",
-                // Reasoning summaries are opt-in on the Responses API. MAF merges these agent-level
-                // options into every run, including runs that arrive over AG-UI.
-                RawRepresentationFactory = _ => new CreateResponseOptions
-                {
-                    ReasoningOptions = new ResponseReasoningOptions
-                    {
-                        ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Detailed
-                    }
-                }
+                // Reasoning summaries are opt-in. `ChatOptions.Reasoning` is the provider-neutral
+                // switch: the OpenAI client maps `Full` to the Responses API's detailed reasoning
+                // summary. MAF merges these agent-level options into every run, including runs
+                // that arrive over AG-UI.
+                Reasoning = new ReasoningOptions { Output = ReasoningOutput.Full }
             }
         });
 

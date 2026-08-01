@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- MEAI001: Microsoft.Extensions.AI evaluation-only APIs (e.g. ContinuationToken) used by the
          DelegatingAIAgent scenario wrappers, mirroring the MAF AG-UI dojo sample.
-         OPENAI001: the OpenAI Responses API surface (reasoning summaries) is still evaluation-only. -->
+         OPENAI001: OpenAIClient.GetResponsesClient() / AsIChatClient(ResponsesClient) are still
+         evaluation-only. The reasoning options themselves are stable (ChatOptions.Reasoning). -->
     <NoWarn>$(NoWarn);MEAI001;OPENAI001</NoWarn>
   </PropertyGroup>
 
