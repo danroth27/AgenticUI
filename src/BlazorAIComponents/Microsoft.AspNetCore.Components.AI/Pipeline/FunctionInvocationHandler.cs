@@ -8,49 +8,36 @@ namespace Microsoft.AspNetCore.Components.AI;
 internal sealed class FunctionInvocationHandler : ContentBlockHandler<FunctionInvocationContentBlock>
 {
     public override BlockMappingResult<FunctionInvocationContentBlock> Handle(
-        BlockMappingContext context, FunctionInvocationContentBlock state)
+        BlockMappingContext context,
+        FunctionInvocationContentBlock state)
     {
-        // Check for FunctionCallContent — only when not already tracking a call
         if (state.Call is null)
         {
-            FunctionCallContent? callContent = null;
             foreach (var content in context.UnhandledContents)
             {
-                if (content is FunctionCallContent fc)
+                if (content is FunctionCallContent call)
                 {
-                    callContent = fc;
-                    break;
+                    context.MarkHandled(call);
+                    state.Call = call;
+                    return BlockMappingResult<FunctionInvocationContentBlock>.Emit(state, state);
                 }
             }
+        }
 
-            if (callContent is not null)
+        if (state.Call is not null)
+        {
+            foreach (var content in context.UnhandledContents)
             {
-                context.MarkHandled(callContent);
-                state.Call = callContent;
-                state.Id = callContent.CallId;
-                return BlockMappingResult<FunctionInvocationContentBlock>.Emit(state, state);
+                if (content is FunctionResultContent result &&
+                    result.CallId == state.Call.CallId)
+                {
+                    context.MarkHandled(result);
+                    state.Result = result;
+                    return BlockMappingResult<FunctionInvocationContentBlock>.Complete();
+                }
             }
         }
 
-        // Check for FunctionResultContent matching our active block's CallId
-        FunctionResultContent? resultContent = null;
-        foreach (var content in context.UnhandledContents)
-        {
-            if (content is FunctionResultContent frc)
-            {
-                resultContent = frc;
-                break;
-            }
-        }
-
-        if (resultContent is not null && state.Call is not null && resultContent.CallId == state.Call.CallId)
-        {
-            context.MarkHandled(resultContent);
-            state.Result = resultContent;
-            return BlockMappingResult<FunctionInvocationContentBlock>.Complete();
-        }
-
-        // No matching content — wait
         return BlockMappingResult<FunctionInvocationContentBlock>.Pass();
     }
 }

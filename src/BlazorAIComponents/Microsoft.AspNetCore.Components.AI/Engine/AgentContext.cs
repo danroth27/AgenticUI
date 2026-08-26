@@ -6,6 +6,17 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Owns the state of a conversation: the turns rendered by the UI, the current
+/// <see cref="ConversationStatus"/>, and the notifications the components subscribe to.
+/// </summary>
+/// <example>
+/// <code>
+/// var context = new AgentContext(agent);
+/// using var subscription = context.RegisterOnStatusChanged(status => Console.WriteLine(status));
+/// await context.SendMessageAsync("Hello");
+/// </code>
+/// </example>
 public class AgentContext : IDisposable
 {
     private readonly UIAgent _agent;
@@ -17,27 +28,54 @@ public class AgentContext : IDisposable
     private ChatMessage? _lastMessage;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AgentContext"/> class.
+    /// </summary>
+    /// <param name="agent">The agent that produces the responses for this conversation.</param>
     public AgentContext(UIAgent agent)
     {
+        ArgumentNullException.ThrowIfNull(agent);
         _agent = agent;
     }
 
+    /// <summary>
+    /// Gets the turns of this conversation, oldest first.
+    /// </summary>
     public IReadOnlyList<ConversationTurn> Turns => _turns;
 
+    /// <summary>
+    /// Gets the current status of the conversation.
+    /// </summary>
     public ConversationStatus Status { get; private set; }
 
+    /// <summary>
+    /// Gets the exception that failed the last turn, when <see cref="Status"/> is
+    /// <see cref="ConversationStatus.Error"/>.
+    /// </summary>
     public Exception? Error { get; private set; }
 
+    /// <summary>
+    /// Sends a text message and streams the response into a new turn.
+    /// </summary>
+    /// <param name="text">The message text.</param>
+    /// <param name="cancellationToken">A token that cancels the response.</param>
+    /// <returns>A task that completes when the turn finishes.</returns>
     public Task SendMessageAsync(string text, CancellationToken cancellationToken = default)
     {
         return SendMessageAsync(new ChatMessage(ChatRole.User, text), cancellationToken);
     }
 
+    /// <summary>
+    /// Sends a message and streams the response into a new turn.
+    /// </summary>
+    /// <param name="message">The message to send.</param>
+    /// <param name="cancellationToken">A token that cancels the response.</param>
+    /// <returns>A task that completes when the turn finishes.</returns>
     public async Task SendMessageAsync(ChatMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        if (Status == ConversationStatus.Streaming)
+        if (Status is ConversationStatus.Streaming or ConversationStatus.AwaitingInput)
         {
             throw new InvalidOperationException("A message is already being processed.");
         }
@@ -54,23 +92,39 @@ public class AgentContext : IDisposable
         await StreamIntoTurnAsync(message, turn, _streamingCts.Token, cancellationToken);
     }
 
+    /// <summary>
+    /// Restores the committed turns from the agent's configured conversation thread.
+    /// </summary>
+    /// <param name="cancellationToken">A token that cancels restoration.</param>
+    /// <returns>A task that completes when the turns have been restored.</returns>
     public async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
-        if (Status == ConversationStatus.Streaming)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (Status is ConversationStatus.Streaming or ConversationStatus.AwaitingInput)
         {
             throw new InvalidOperationException("A message is already being processed.");
         }
 
         var blocks = await _agent.RestoreAsync(cancellationToken);
-
+        var restoredTurns = new List<ConversationTurn>();
         ConversationTurn? currentTurn = null;
-
         foreach (var block in blocks)
         {
             if (block.Role == ChatRole.User)
             {
                 currentTurn = new ConversationTurn();
-                _turns.Add(currentTurn);
+                restoredTurns.Add(currentTurn);
+                currentTurn.AddRequestBlock(block);
+            }
+            else if (block.Role == ChatRole.Tool)
+            {
+                if (currentTurn is null)
+                {
+                    currentTurn = new ConversationTurn();
+                    restoredTurns.Add(currentTurn);
+                }
+
                 currentTurn.AddRequestBlock(block);
             }
             else
@@ -78,149 +132,27 @@ public class AgentContext : IDisposable
                 if (currentTurn is null)
                 {
                     currentTurn = new ConversationTurn();
-                    _turns.Add(currentTurn);
+                    restoredTurns.Add(currentTurn);
                 }
 
                 currentTurn.AddResponseBlock(block);
             }
         }
-    }
 
-    private async Task StreamIntoTurnAsync(
-        ChatMessage message,
-        ConversationTurn turn,
-        CancellationToken cancellationToken,
-        CancellationToken callerToken)
-    {
-        Status = ConversationStatus.Streaming;
+        _turns.Clear();
+        _turns.AddRange(restoredTurns);
+        _streamingCts?.Dispose();
+        _streamingCts = null;
+        _lastMessage = null;
         Error = null;
-        NotifyStatusChanged();
-
-        try
-        {
-            ChatMessage? currentMessage = message;
-
-            while (currentMessage is not null)
-            {
-                var interactiveBlocks = new List<IInteractiveBlock>();
-                var uninvokedToolBlocks = new List<FunctionInvocationContentBlock>();
-
-                await foreach (var block in _agent.SendMessageAsync(currentMessage, cancellationToken)
-                    .WithCancellation(cancellationToken))
-                {
-                    if (block is IInteractiveBlock interactive)
-                    {
-                        interactiveBlocks.Add(interactive);
-                    }
-                    else if (block is FunctionInvocationContentBlock ficb
-                             && ficb.Call is { InformationalOnly: false }
-                             && ficb.Result is null)
-                    {
-                        uninvokedToolBlocks.Add(ficb);
-                    }
-
-                    if (block.Role == currentMessage.Role)
-                    {
-                        turn.AddRequestBlock(block);
-                    }
-                    else
-                    {
-                        turn.AddResponseBlock(block);
-                    }
-
-                    NotifyBlockAdded(turn, block);
-                }
-
-                currentMessage = null;
-
-                if (interactiveBlocks.Count == 0 && uninvokedToolBlocks.Count == 0)
-                {
-                    break;
-                }
-
-                // Build tasks for all pending work
-                var resultTasks = new List<Task<AIContent>>();
-
-                foreach (var interactive in interactiveBlocks)
-                {
-                    resultTasks.Add(interactive.GetResultAsync(cancellationToken));
-
-                    // Frontend tools (UIActionBlock) are client-side actions the model declared and
-                    // expects the browser to run automatically — there is no human step. Invoke them
-                    // now so the run resumes without app-provided glue. Blocks that genuinely need a
-                    // person (e.g. FunctionApprovalBlock) are left to await external input.
-                    if (interactive is UIActionBlock action)
-                    {
-                        _ = action.InvokeAsync(cancellationToken);
-                    }
-                }
-
-                foreach (var toolBlock in uninvokedToolBlocks)
-                {
-                    resultTasks.Add(InvokeBackendToolAsync(toolBlock, cancellationToken));
-                }
-
-                var needsHumanInput = interactiveBlocks.Any(b => b is not UIActionBlock);
-                if (needsHumanInput)
-                {
-                    Status = ConversationStatus.AwaitingInput;
-                    NotifyStatusChanged();
-                }
-
-                var results = await Task.WhenAll(resultTasks);
-
-                if (results.Length > 0)
-                {
-                    var role = results.Any(r => r is not FunctionResultContent)
-                        ? ChatRole.User
-                        : ChatRole.Tool;
-                    currentMessage = new ChatMessage(role, [.. results]);
-                }
-
-                Status = ConversationStatus.Streaming;
-                NotifyStatusChanged();
-            }
-
-            Status = ConversationStatus.Idle;
-            if (cancellationToken.IsCancellationRequested)
-            {
-                turn.ClearResponseBlocks();
-            }
-            NotifyStatusChanged();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            turn.ClearResponseBlocks();
-            Status = ConversationStatus.Idle;
-            NotifyStatusChanged();
-        }
-        catch (Exception ex)
-        {
-            // A failing turn is surfaced as conversation state (Status/Error) rather than a
-            // faulted Task: the UI renders the error and RetryAsync replays the last message.
-            // This is the engine's error contract, not a swallowed exception.
-            Error = ex;
-            Status = ConversationStatus.Error;
-            NotifyStatusChanged();
-            return;
-        }
-
-        // If the caller's own token requested cancellation, surface it so the returned Task
-        // completes as canceled. Cancellation driven by CancelAsync() (the internal token only)
-        // is a graceful stop and completes normally.
-        callerToken.ThrowIfCancellationRequested();
+        Status = ConversationStatus.Idle;
     }
 
-    private async Task<AIContent> InvokeBackendToolAsync(
-        FunctionInvocationContentBlock block,
-        CancellationToken cancellationToken)
-    {
-        var result = await _agent.InvokeToolAsync(block.Call!, cancellationToken);
-        block.Result = result;
-        block.InvokeNotifyChanged();
-        return result;
-    }
-
+    /// <summary>
+    /// Replays the last message after a failed turn.
+    /// </summary>
+    /// <param name="cancellationToken">A token that cancels the response.</param>
+    /// <returns>A task that completes when the turn finishes.</returns>
     public async Task RetryAsync(CancellationToken cancellationToken = default)
     {
         if (Status != ConversationStatus.Error)
@@ -238,9 +170,13 @@ public class AgentContext : IDisposable
         await StreamIntoTurnAsync(_lastMessage!, turn, _streamingCts.Token, cancellationToken);
     }
 
+    /// <summary>
+    /// Stops the response that is currently streaming, if any.
+    /// </summary>
+    /// <returns>A task that completes once cancellation has been requested.</returns>
     public Task CancelAsync()
     {
-        if (Status == ConversationStatus.Idle || Status == ConversationStatus.Error)
+        if (Status is ConversationStatus.Idle or ConversationStatus.Error)
         {
             return Task.CompletedTask;
         }
@@ -249,6 +185,45 @@ public class AgentContext : IDisposable
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Registers a callback invoked when a turn is added to the conversation.
+    /// </summary>
+    /// <param name="callback">The callback to invoke.</param>
+    /// <returns>A registration that removes the callback when disposed.</returns>
+    public IDisposable RegisterOnTurnAdded(Action<ConversationTurn> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        _turnAddedCallbacks.Add(callback);
+        return new CallbackRegistration<Action<ConversationTurn>>(_turnAddedCallbacks, callback);
+    }
+
+    /// <summary>
+    /// Registers a callback invoked when <see cref="Status"/> changes.
+    /// </summary>
+    /// <param name="callback">The callback to invoke.</param>
+    /// <returns>A registration that removes the callback when disposed.</returns>
+    public IDisposable RegisterOnStatusChanged(Action<ConversationStatus> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        _statusChangedCallbacks.Add(callback);
+        return new CallbackRegistration<Action<ConversationStatus>>(_statusChangedCallbacks, callback);
+    }
+
+    /// <summary>
+    /// Registers a callback invoked when a block is added to a turn.
+    /// </summary>
+    /// <param name="callback">The callback to invoke.</param>
+    /// <returns>A registration that removes the callback when disposed.</returns>
+    public IDisposable RegisterOnBlockAdded(Action<ConversationTurn, ContentBlock> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        _blockAddedCallbacks.Add(callback);
+        return new CallbackRegistration<Action<ConversationTurn, ContentBlock>>(_blockAddedCallbacks, callback);
+    }
+
+    /// <summary>
+    /// Releases the resources used by this context and stops any streaming response.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -259,53 +234,144 @@ public class AgentContext : IDisposable
         _disposed = true;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
+        _agent.RejectPendingPredictiveState();
         _turnAddedCallbacks.Clear();
         _statusChangedCallbacks.Clear();
         _blockAddedCallbacks.Clear();
+        GC.SuppressFinalize(this);
     }
 
-    public IDisposable RegisterOnTurnAdded(Action<ConversationTurn> callback)
+    private async Task StreamIntoTurnAsync(
+        ChatMessage message,
+        ConversationTurn turn,
+        CancellationToken cancellationToken,
+        CancellationToken callerToken)
     {
-        _turnAddedCallbacks.Add(callback);
-        return new CallbackRegistration<Action<ConversationTurn>>(_turnAddedCallbacks, callback);
+        Status = ConversationStatus.Streaming;
+        Error = null;
+        NotifyStatusChanged();
+
+        try
+        {
+            IReadOnlyList<ChatMessage>? currentMessages = [message];
+            while (currentMessages is not null)
+            {
+                var interactiveBlocks = new List<IInteractiveBlock>();
+
+                await foreach (var block in _agent.SendMessagesAsync(currentMessages, cancellationToken)
+                    .WithCancellation(cancellationToken))
+                {
+                    if (block.Role == message.Role)
+                    {
+                        turn.AddRequestBlock(block);
+                    }
+                    else
+                    {
+                        turn.AddResponseBlock(block);
+                    }
+
+                    if (block is IInteractiveBlock interactiveBlock)
+                    {
+                        interactiveBlocks.Add(interactiveBlock);
+                    }
+
+                    NotifyBlockAdded(turn, block);
+                }
+
+                if (interactiveBlocks.Count == 0)
+                {
+                    currentMessages = null;
+                    continue;
+                }
+
+                Status = ConversationStatus.AwaitingInput;
+                NotifyStatusChanged();
+
+                var results = await Task.WhenAll(
+                    interactiveBlocks.Select(block => block.GetResultAsync(cancellationToken)));
+
+                currentMessages = CreateContinuationMessages(results);
+                Status = ConversationStatus.Streaming;
+                NotifyStatusChanged();
+            }
+
+            _agent.RejectPendingPredictiveState();
+            Status = ConversationStatus.Idle;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                turn.ClearResponseBlocks();
+            }
+            NotifyStatusChanged();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            turn.ClearResponseBlocks();
+            _agent.RejectPendingPredictiveState();
+            Status = ConversationStatus.Idle;
+            NotifyStatusChanged();
+        }
+        catch (Exception ex)
+        {
+            // A failing turn is surfaced as conversation state (Status/Error) rather than a
+            // faulted Task: the UI renders the error and RetryAsync replays the last message.
+            // This is the engine's error contract, not a swallowed exception.
+            _agent.RejectPendingPredictiveState();
+            Error = ex;
+            Status = ConversationStatus.Error;
+            NotifyStatusChanged();
+            return;
+        }
+
+        // If the caller's own token requested cancellation, surface it so the returned Task
+        // completes as canceled. Cancellation driven by CancelAsync() (the internal token only)
+        // is a graceful stop and completes normally.
+        callerToken.ThrowIfCancellationRequested();
     }
 
-    public IDisposable RegisterOnStatusChanged(Action<ConversationStatus> callback)
+    private static IReadOnlyList<ChatMessage> CreateContinuationMessages(
+        IReadOnlyList<AIContent> results)
     {
-        _statusChangedCallbacks.Add(callback);
-        return new CallbackRegistration<Action<ConversationStatus>>(_statusChangedCallbacks, callback);
-    }
+        var messages = new List<ChatMessage>();
+        foreach (var result in results)
+        {
+            var role = result is FunctionResultContent ? ChatRole.Tool : ChatRole.User;
+            if (messages.Count > 0 && messages[^1].Role == role)
+            {
+                messages[^1].Contents.Add(result);
+            }
+            else
+            {
+                messages.Add(new ChatMessage(role, [result]));
+            }
+        }
 
-    public IDisposable RegisterOnBlockAdded(Action<ConversationTurn, ContentBlock> callback)
-    {
-        _blockAddedCallbacks.Add(callback);
-        return new CallbackRegistration<Action<ConversationTurn, ContentBlock>>(_blockAddedCallbacks, callback);
+        return messages;
     }
 
     private void NotifyStatusChanged()
     {
         var snapshot = _statusChangedCallbacks.ToArray();
-        foreach (var cb in snapshot)
+        foreach (var callback in snapshot)
         {
-            cb(Status);
+            callback(Status);
         }
     }
 
     private void NotifyTurnAdded(ConversationTurn turn)
     {
         var snapshot = _turnAddedCallbacks.ToArray();
-        foreach (var cb in snapshot)
+        foreach (var callback in snapshot)
         {
-            cb(turn);
+            callback(turn);
         }
     }
 
     private void NotifyBlockAdded(ConversationTurn turn, ContentBlock block)
     {
         var snapshot = _blockAddedCallbacks.ToArray();
-        foreach (var cb in snapshot)
+        foreach (var callback in snapshot)
         {
-            cb(turn, block);
+            callback(turn, block);
         }
     }
 

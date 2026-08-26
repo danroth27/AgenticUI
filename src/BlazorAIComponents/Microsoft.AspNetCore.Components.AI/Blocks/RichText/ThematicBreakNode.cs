@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class ThematicBreakNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents a thematic break.
+/// </summary>
+public class ThematicBreakNode : RichTextNode;

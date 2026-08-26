@@ -1,5 +1,7 @@
 @page "/shared-state"
+@using System.Text.Json
 @inject AgentServerConnection Agents
+@inject ILoggerFactory LoggerFactory
 @implements IDisposable
 
 <PageTitle>Shared state</PageTitle>
@@ -68,12 +70,25 @@
 @code {
     private UIAgent<RecipeState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedRegistration;
 
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/shared_state");
+        var thread = new DojoConversationThread(Guid.NewGuid().ToString("N"));
         _agent = new UIAgent<RecipeState>(_chatClient, options =>
         {
+            options.Thread = thread;
+            options.ChatOptions = new ChatOptions
+            {
+                RawRepresentationFactory = _ => new RunAgentInput
+                {
+                    ThreadId = thread.ThreadId,
+                    State = JsonSerializer.SerializeToElement(
+                        _agent.State.Value,
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+                },
+            };
             options.StateMapper = ctx =>
             {
                 if (AguiState.TryMap<RecipeState>(ctx, () => _agent.State.Value, out var next))
@@ -82,13 +97,17 @@
                     {
                         ctx.SetState(next);
                     }
-                    return true;
                 }
-                return false;
             };
-        });
-        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+        }, LoggerFactory);
+        _stateChangedRegistration = _agent.State.OnChanged(
+            () => _ = InvokeAsync(StateHasChanged));
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }

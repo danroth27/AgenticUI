@@ -6,58 +6,48 @@ using Microsoft.Extensions.AI;
 namespace Microsoft.AspNetCore.Components.AI;
 
 /// <summary>
-/// Represents a persistent conversation thread that stores ChatResponseUpdates.
-/// Implementations control where and how updates are persisted.
+/// Represents a persistent conversation thread that stores streamed chat updates.
 /// </summary>
+/// <remarks>
+/// Implementations control where and how conversation updates are persisted.
+/// </remarks>
 public interface IConversationThread
 {
     /// <summary>
-    /// The unique identifier for this thread.
+    /// Gets the unique identifier for this thread.
     /// </summary>
     string ThreadId { get; }
 
     /// <summary>
-    /// Whether the remote LLM is stateful (manages its own history).
-    /// When true, the LLM returned a ConversationId, so the full message
-    /// history does not need to be sent on each turn.
+    /// Gets a value indicating whether the remote service manages the conversation history.
     /// </summary>
     bool IsStateful { get; }
 
     /// <summary>
-    /// The ConversationId returned by a stateful LLM, if any.
-    /// This is set on the ChatOptions.ConversationId for stateful LLMs.
+    /// Gets the conversation identifier returned by a stateful remote service, if any.
     /// </summary>
     string? ConversationId { get; }
 
     /// <summary>
-    /// Appends a user-initiated message as a ChatResponseUpdate to the thread.
-    /// Called before the LLM request to record what the user sent.
+    /// Begins a turn by appending the messages sent to the chat client.
     /// </summary>
-    void AppendUserMessage(ChatMessage message);
+    /// <param name="messages">The messages that begin the turn.</param>
+    void AppendMessages(IEnumerable<ChatMessage> messages);
 
     /// <summary>
-    /// Appends a single ChatResponseUpdate received during streaming.
-    /// Called as each update arrives from the LLM.
+    /// Appends an update received from the chat client to the current turn.
     /// </summary>
+    /// <param name="update">The streamed update.</param>
     void AppendUpdate(ChatResponseUpdate update);
 
     /// <summary>
     /// Commits the current turn to the stored history.
-    /// Only committed turns appear in <see cref="GetUpdates"/> and <see cref="GetMessageHistory"/>.
-    /// If a turn fails mid-stream, not calling CompleteTurn discards the partial turn.
     /// </summary>
     void CompleteTurn();
 
     /// <summary>
-    /// Returns all committed updates as a flat list.
-    /// Turn boundaries can be detected by looking for updates with
-    /// a user Role (from <see cref="AppendUserMessage"/>) or by changes in ResponseId.
+    /// Gets all committed updates in chronological order.
     /// </summary>
+    /// <returns>The committed updates.</returns>
     IReadOnlyList<ChatResponseUpdate> GetUpdates();
-
-    /// <summary>
-    /// Returns the ChatMessage history suitable for sending to a stateless LLM.
-    /// This reconstructs ChatMessages from the stored updates.
-    /// </summary>
-    IReadOnlyList<ChatMessage> GetMessageHistory();
 }

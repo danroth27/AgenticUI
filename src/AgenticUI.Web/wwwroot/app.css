@@ -1,5 +1,7 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    min-height: 100%;
+    font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+    background: #dedee9;
 }
 
 a, .btn-link {
@@ -63,52 +65,125 @@ h1:focus {
 /* Design tokens. Neutral surfaces with one brand accent, so every scenario page
    reads as part of the same app and the artifact panel stays the focal point. */
 :root {
-    --app-bg: #f5f5f5;
+    --app-bg: #f3f3f8;
     --app-surface: #ffffff;
-    --app-border: #e5e7eb;
-    --app-text: #212121;
-    --app-text-muted: #6b7280;
-    --app-brand: #512bd4;
-    --app-brand-soft: #f0ebff;
-    --app-radius: 12px;
-    --app-radius-lg: 16px;
-    --app-shadow: 0 2px 8px rgba(0, 0, 0, .06);
-    --app-shadow-lg: 0 4px 20px rgba(0, 0, 0, .08);
+    --app-border: #dbdbe5;
+    --app-text: #272733;
+    --app-text-muted: #777785;
+    --app-brand: #696fd7;
+    --app-brand-soft: #e9eaff;
+    --app-lilac: #bec2ff;
+    --app-mint: #85e0ce;
+    --app-yellow: #fff388;
+    --app-orange: #ffac4d;
+    --app-radius: .875rem;
+    --app-radius-lg: 1rem;
+    --app-shadow: 0 8px 24px rgba(37, 37, 49, .06);
+    --app-shadow-lg: 0 18px 48px rgba(37, 37, 49, .09);
 }
 
-body { color: var(--app-text); }
+body {
+    color: var(--app-text);
+    margin: 0;
+}
 
 /* ---- Home ---- */
-.home { max-width: 1000px; }
-.home .lead { font-size: 1.1rem; color: var(--app-text-muted); margin-bottom: 1.5rem; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
-.card { display: block; padding: 1.1rem 1.25rem; border: 1px solid var(--app-border);
-    border-radius: var(--app-radius); text-decoration: none; color: inherit; background: var(--app-surface);
-    transition: box-shadow .15s, border-color .15s, transform .15s; }
-.card:hover { box-shadow: var(--app-shadow-lg); border-color: var(--app-brand); transform: translateY(-1px); }
-.card h3 { margin: 0 0 .35rem; font-size: 1.05rem; }
-.card p { margin: 0; color: var(--app-text-muted); font-size: .9rem; }
+.home {
+    width: min(70rem, 100%);
+    margin: auto;
+    padding: 2rem 0;
+}
 
-/* Sits on the dark sidebar, so it needs an explicit light colour rather than
-   inheriting the body text colour. */
-.nav-heading { text-transform: uppercase; font-size: .72rem; letter-spacing: .06em;
-    color: rgba(255, 255, 255, .55); margin-top: .75rem; padding-top: .5rem; }
+.home__hero {
+    max-width: 48rem;
+    margin-bottom: 2.5rem;
+}
+
+.home h1 {
+    margin: .7rem 0 1rem;
+    font-size: clamp(2.4rem, 6vw, 4.8rem);
+    font-weight: 650;
+    letter-spacing: -.065em;
+    line-height: .98;
+}
+
+.home .lead {
+    max-width: 44rem;
+    margin: 0;
+    color: var(--app-text-muted);
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: .75rem;
+}
+
+.card {
+    position: relative;
+    display: block;
+    min-height: 10rem;
+    padding: 1.25rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: var(--app-radius-lg);
+    background: rgba(255, 255, 255, .78);
+    box-shadow: var(--app-shadow);
+    color: inherit;
+    text-decoration: none;
+    transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.card:hover {
+    border-color: #cfd0dc;
+    box-shadow: var(--app-shadow-lg);
+    color: inherit;
+    transform: translateY(-2px);
+}
+
+.card__index {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 1.4rem;
+    border-radius: .6rem;
+    background: #e5e6ff;
+    color: #555bba;
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.card__index--mint { background: #daf6f0; color: #277c6a; }
+.card__index--yellow { background: #fff9c5; color: #796f16; }
+.card__index--orange { background: #ffe7cb; color: #9b5c14; }
+.card h3 { margin: 0 0 .45rem; font-size: .95rem; font-weight: 650; }
+.card p { margin: 0; color: var(--app-text-muted); font-size: .78rem; line-height: 1.55; }
 
 /* ---- Scenario shell ----
    The layout pins <main> to the viewport (see MainLayout.razor.css), so the scenario
    fills the remaining height and each region owns its own scrolling. Nothing here may
    use a viewport-relative height, or long transcripts overflow the page and become
    unreachable. */
-.scenario { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding-bottom: 1.1rem; }
-.scenario__intro { flex: 0 0 auto; margin-bottom: .75rem; }
-.scenario__intro h1 { margin: 0 0 .35rem; font-size: 1.6rem; font-weight: 600; }
-.scenario__intro p { color: var(--app-text-muted); max-width: 80ch; margin: 0; font-size: .95rem; line-height: 1.55; }
-.scenario__intro code { background: #f3f4f6; border-radius: 4px; padding: .05rem .3rem; font-size: .88em; }
+.scenario { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.scenario__intro { flex: 0 0 auto; margin-bottom: 1rem; }
+.scenario__eyebrow {
+    color: #7775bb;
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+.scenario__intro h1 { margin: .25rem 0 .4rem; font-size: 1.65rem; font-weight: 650; letter-spacing: -.035em; }
+.scenario__intro p { color: var(--app-text-muted); max-width: 82ch; margin: 0; font-size: .82rem; line-height: 1.6; }
+.scenario__intro code { background: #eeeeF4; border-radius: 4px; padding: .05rem .3rem; font-size: .88em; }
 .scenario__note { color: var(--app-text-muted); font-size: .85rem; font-style: italic; margin-top: .35rem; }
 
 .scenario__chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
-    background: var(--app-surface); border: 1px solid var(--app-border);
-    border-radius: var(--app-radius); box-shadow: var(--app-shadow); }
+    background: rgba(255, 255, 255, .88); border: 1px solid rgba(255, 255, 255, .95);
+    border-radius: var(--app-radius-lg); box-shadow: var(--app-shadow); }
 
 /* The component library sizes the chat page to the viewport. Inside our shell it must
    instead fill its container, otherwise it overflows and the transcript can't scroll. */
@@ -117,13 +192,13 @@ body { color: var(--app-text); }
 /* Artifact-primary split: the thing the agent is building gets the room, the
    conversation sits alongside it as a rail. */
 .scenario__split { flex: 1 1 auto; min-height: 0; display: grid;
-    grid-template-columns: minmax(0, 1fr) 26rem; gap: 1rem; }
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: .75rem; }
 .scenario__split > * { min-height: 0; }
 
-.scenario__panel { overflow: auto; background: var(--app-bg); border: 1px solid var(--app-border);
-    border-radius: var(--app-radius); padding: 1.5rem; display: flex; justify-content: center; align-items: flex-start; }
+.scenario__panel { overflow: auto; background: rgba(238, 238, 245, .72); border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: var(--app-radius-lg); padding: 1.25rem; display: flex; justify-content: center; align-items: flex-start; }
 .panel-card { width: 100%; max-width: 44rem; background: var(--app-surface);
-    border-radius: var(--app-radius-lg); padding: 1.75rem; box-shadow: var(--app-shadow-lg); }
+    border: 1px solid #e7e7ee; border-radius: var(--app-radius-lg); padding: 1.75rem; box-shadow: var(--app-shadow-lg); }
 .panel-empty { color: var(--app-text-muted); font-style: italic; }
 
 /* Section headings inside artifact cards, with the accent underline the artifacts share. */
@@ -148,6 +223,230 @@ body { color: var(--app-text); }
 @media (max-width: 640.98px) {
     .scenario { min-height: 32rem; }
     .scenario__split { grid-template-columns: 1fr; }
+}
+
+/* ---- Predictive state workspace ---- */
+.scenario--workspace {
+    overflow: hidden;
+}
+
+.predictive-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(21rem, 27rem);
+    gap: .75rem;
+}
+
+.document-panel,
+.predictive-chat {
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .95);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow);
+}
+
+.document-panel {
+    position: relative;
+    background: rgba(238, 238, 245, .76);
+    padding: 1.25rem;
+}
+
+.document-panel::before {
+    content: "DOCUMENT";
+    position: absolute;
+    top: 1.7rem;
+    left: 2rem;
+    z-index: 1;
+    color: #9999a7;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
+.document-editor__input,
+.document-editor__surface {
+    width: 100%;
+    height: 100%;
+    min-height: 25rem;
+    padding: 3.5rem 2.5rem 2.5rem;
+    border: 1px solid #e3e3eb;
+    border-radius: .9rem;
+    outline: none;
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(37, 37, 49, .08);
+    color: #353542;
+    font: 400 .92rem/1.75 ui-monospace, "Cascadia Code", Consolas, monospace;
+    resize: none;
+}
+
+.document-editor__surface {
+    overflow: auto;
+}
+
+.document-editor__diff {
+    margin: 0;
+    white-space: pre-wrap;
+    font: inherit;
+}
+
+.document-editor__diff em {
+    padding: .08rem .12rem;
+    background: #d8f5eb;
+    color: #176451;
+    font-style: normal;
+}
+
+.document-editor__diff s {
+    padding: .08rem .12rem;
+    background: #ffe1dd;
+    color: #a2473c;
+}
+
+.predictive-chat {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, .9);
+}
+
+.workspace-chat__header {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid #e9e9ef;
+}
+
+.workspace-chat__label {
+    display: block;
+    color: #898996;
+    font-size: .58rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.workspace-chat__header h2 {
+    margin: .12rem 0 0;
+    font-size: .88rem;
+    font-weight: 650;
+}
+
+.workspace-chat__reset {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #e2e2e9;
+    border-radius: .6rem;
+    background: #f7f7fa;
+    color: #777784;
+    font-size: 1.2rem;
+}
+
+.dojo-chat-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    background: transparent;
+}
+
+.dojo-scenario__welcome {
+    max-width: 18rem;
+    margin: auto;
+    color: #8a8a97;
+    font-size: .8rem;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.document-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    padding: .6rem .75rem 0;
+}
+
+.document-suggestions button {
+    padding: .38rem .6rem;
+    border: 1px solid #dedee7;
+    border-radius: 999px;
+    background: #f7f7fa;
+    color: #646472;
+    font-size: .65rem;
+}
+
+.document-suggestions button:hover:not(:disabled) {
+    border-color: #bec2ff;
+    background: #f0f0ff;
+}
+
+.confirm-changes {
+    margin: .5rem 0;
+    padding: .9rem;
+    border: 1px solid #e0e0e9;
+    border-radius: .85rem;
+    background: #fbfbfd;
+}
+
+.confirm-changes__eyebrow {
+    color: #7775bb;
+    font-size: .58rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.confirm-changes h3 {
+    margin: .15rem 0 0;
+    font-size: .9rem;
+}
+
+.confirm-changes__message {
+    margin: .55rem 0;
+    color: #777784;
+    font-size: .75rem;
+}
+
+.confirm-changes__actions {
+    display: flex;
+    gap: .4rem;
+}
+
+.confirm-changes__btn {
+    flex: 1;
+    padding: .45rem .65rem;
+    border: 1px solid #dcdce5;
+    border-radius: .55rem;
+    background: #fff;
+    font-size: .72rem;
+    font-weight: 650;
+}
+
+.confirm-changes__btn--accept {
+    border-color: #272733;
+    background: #272733;
+    color: #fff;
+}
+
+.confirm-changes__status {
+    font-size: .75rem;
+    font-weight: 650;
+}
+
+.confirm-changes__status--accepted { color: #27816b; }
+.confirm-changes__status--rejected { color: #ad4e43; }
+
+@media (max-width: 980px) {
+    .predictive-layout {
+        grid-template-columns: 1fr;
+        overflow: auto;
+    }
+
+    .document-panel,
+    .predictive-chat {
+        min-height: 34rem;
+    }
 }
 
 /* ---- Artifacts ---- */
@@ -213,3 +512,58 @@ body { color: var(--app-text); }
 .approval-card__status { margin-top: .9rem; font-weight: 600; font-size: .9rem; }
 .approval-card__status--approved { color: #2e9d5b; }
 .approval-card__status--rejected { color: #c0392b; }
+
+.reasoning-card {
+    margin: .5rem 0;
+    overflow: hidden;
+    border: 1px solid #dedee8;
+    border-radius: .85rem;
+    background: linear-gradient(135deg, #f4f2ff, #fbfbfe);
+    color: #5f5f70;
+}
+
+.reasoning-card summary {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    padding: .75rem .85rem;
+    cursor: pointer;
+    color: #4c4c5c;
+    font-size: .78rem;
+    font-weight: 650;
+    list-style: none;
+}
+
+.reasoning-card summary::-webkit-details-marker {
+    display: none;
+}
+
+.reasoning-card__icon {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: .45rem;
+    background: #e3e4ff;
+    color: #6268c7;
+}
+
+.reasoning-card__status {
+    margin-left: auto;
+    color: #89899a;
+    font-size: .64rem;
+    font-weight: 500;
+}
+
+.reasoning-card p {
+    margin: 0;
+    padding: 0 .9rem .9rem;
+    color: #737382;
+    font-size: .76rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.reasoning-card__protected {
+    font-style: italic;
+}

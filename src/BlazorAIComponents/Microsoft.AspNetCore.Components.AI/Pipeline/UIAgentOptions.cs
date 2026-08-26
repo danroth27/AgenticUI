@@ -5,18 +5,46 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Configures a <see cref="UIAgent"/>.
+/// </summary>
+/// <example>
+/// <code>
+/// var agent = new UIAgent(chatClient, options =>
+/// {
+///     options.ChatOptions = new ChatOptions { Instructions = "You are a helpful assistant." };
+/// });
+/// </code>
+/// </example>
 public class UIAgentOptions
 {
+    /// <summary>
+    /// Gets or sets the options passed to the underlying <see cref="IChatClient"/>.
+    /// </summary>
     public ChatOptions? ChatOptions { get; set; }
 
-    public Func<StateMapperContext, bool>? StateMapper { get; set; }
+    /// <summary>
+    /// Gets or sets a callback that maps model updates into typed agent state.
+    /// </summary>
+    public Action<StateMapperContext>? StateMapper { get; set; }
 
+    /// <summary>
+    /// Gets or sets the persistent conversation thread that receives completed turns.
+    /// </summary>
     public IConversationThread? Thread { get; set; }
 
     internal List<IHandlerRegistration> HandlerRegistrations { get; } = new();
 
-    internal Dictionary<string, AIFunction> UIActions { get; } = new();
+    internal Dictionary<string, AIFunction> UIActions { get; } =
+        new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Registers a handler that maps model updates into content blocks. Registered handlers
+    /// run before the built-in ones, so they can claim content the built-in handlers would
+    /// otherwise map.
+    /// </summary>
+    /// <typeparam name="TState">The state the handler keeps across updates.</typeparam>
+    /// <param name="handler">The handler to register.</param>
     public void AddBlockHandler<TState>(ContentBlockHandler<TState> handler)
         where TState : new()
     {
@@ -24,8 +52,19 @@ public class UIAgentOptions
         HandlerRegistrations.Add(new HandlerRegistration<TState>(handler));
     }
 
+    /// <summary>
+    /// Registers a function that a matching model tool call executes in the UI.
+    /// The function is sent to the chat client as a declaration, not as an executable server tool.
+    /// </summary>
+    /// <param name="function">
+    /// The function to execute in the UI. Its name must be unique among the registered UI actions.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// An action with the same name is already registered.
+    /// </exception>
     public void RegisterUIAction(AIFunction function)
     {
+        ArgumentNullException.ThrowIfNull(function);
         UIActions.Add(function.Name, function);
     }
 

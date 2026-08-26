@@ -3,41 +3,54 @@
 <PageTitle>AgenticUI — AG-UI for .NET</PageTitle>
 
 <div class="home">
-    <h1>Agentic UI for .NET</h1>
-    <p class="lead">
-        A tour of <strong>AG-UI</strong> (the Agent User Interaction Protocol) in .NET. The backend hosts
-        agents built with the <strong>Microsoft Agent Framework</strong> and the <strong>AG-UI C# SDK</strong>;
-        the frontend is <strong>Blazor</strong> using the new Blazor AI components. Aspire wires the two
-        together, and the agents run on <strong>Microsoft Foundry</strong>.
-    </p>
+    <header class="home__hero">
+        <span class="scenario__eyebrow">AG-UI · Blazor · Microsoft Foundry</span>
+        <h1>Build agentic experiences<br />with .NET</h1>
+        <p class="lead">
+            An interactive Dojo for AG-UI scenarios powered by Microsoft Agent Framework,
+            the latest Blazor AI components, and Microsoft Foundry.
+        </p>
+    </header>
 
     <div class="cards">
         <a class="card" href="agentic-chat">
-            <h3>💬 Agentic chat</h3>
+            <span class="card__index">01</span>
+            <h3>Agentic chat</h3>
             <p>Streaming, multi-turn conversation over AG-UI Server-Sent Events.</p>
         </a>
         <a class="card" href="backend-tools">
-            <h3>🛠️ Backend tools</h3>
+            <span class="card__index card__index--mint">02</span>
+            <h3>Backend tools</h3>
             <p>The agent calls a server-side tool; the UI renders a custom card for the result.</p>
         </a>
         <a class="card" href="frontend-tools">
-            <h3>🎨 Frontend tools</h3>
+            <span class="card__index card__index--yellow">03</span>
+            <h3>Frontend tools</h3>
             <p>The model calls a client-side tool that runs in the browser.</p>
         </a>
         <a class="card" href="human-in-the-loop">
-            <h3>✅ Human in the loop</h3>
+            <span class="card__index card__index--orange">04</span>
+            <h3>Human in the loop</h3>
             <p>A tool requires approval; the run pauses for Approve / Reject.</p>
         </a>
         <a class="card" href="shared-state">
-            <h3>🔄 Shared state</h3>
+            <span class="card__index card__index--mint">05</span>
+            <h3>Shared state</h3>
             <p>Agent and UI share a structured object via state snapshots.</p>
         </a>
         <a class="card" href="agentic-generative-ui">
-            <h3>📋 Agentic generative UI</h3>
+            <span class="card__index">06</span>
+            <h3>Agentic generative UI</h3>
             <p>Live plan progress driven by state snapshots and JSON-Patch deltas.</p>
         </a>
+        <a class="card" href="predictive-state-updates">
+            <span class="card__index card__index--orange">07</span>
+            <h3>Predictive state updates</h3>
+            <p>Stream proposed document edits, then explicitly accept or reject them.</p>
+        </a>
         <a class="card" href="reasoning">
-            <h3>💡 Reasoning</h3>
+            <span class="card__index card__index--yellow">08</span>
+            <h3>Reasoning</h3>
             <p>A reasoning model's chain of thought, shown separately from its answer.</p>
         </a>
     </div>

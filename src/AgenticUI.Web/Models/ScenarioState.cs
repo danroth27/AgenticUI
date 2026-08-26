@@ -63,3 +63,11 @@ public sealed class PlanStep
     [JsonPropertyName("status")]
     public string Status { get; set; } = "pending";
 }
+
+// ---- Predictive state (document editor) ----
+
+public sealed class DocumentState
+{
+    [JsonPropertyName("document")]
+    public string Document { get; set; } = string.Empty;
+}

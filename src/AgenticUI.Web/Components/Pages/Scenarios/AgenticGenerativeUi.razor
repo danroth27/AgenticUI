@@ -60,9 +60,7 @@
                     {
                         ctx.SetState(next);
                     }
-                    return true;
                 }
-                return false;
             };
         });
         _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));

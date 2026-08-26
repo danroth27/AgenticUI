@@ -17,9 +17,9 @@
 
   <ItemGroup>
     <!-- AG-UI C# SDK client: turns an AG-UI endpoint into an IChatClient. -->
-    <PackageReference Include="AGUI.Client" Version="0.0.4" />
+    <PackageReference Include="AGUI.Client" Version="0.0.5" />
     <!-- AG-UI protocol events (e.g. StateSnapshotEvent/StateDeltaEvent) surfaced on the client. -->
-    <PackageReference Include="AGUI.Abstractions" Version="0.0.4" />
+    <PackageReference Include="AGUI.Abstractions" Version="0.0.5" />
     <!-- AIFunctionFactory for client-side (frontend) tools. -->
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.6.0" />
   </ItemGroup>

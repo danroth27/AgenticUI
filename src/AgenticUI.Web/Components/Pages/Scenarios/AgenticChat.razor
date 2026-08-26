@@ -16,20 +16,13 @@
     </div>
 
     <div class="scenario__chat">
-        <ChatPage Agent="_agent" Suggestions="_suggestions" Placeholder="Ask me anything…" />
+        <ChatPage Agent="_agent" Placeholder="Ask me anything…" />
     </div>
 </div>
 
 @code {
     private UIAgent _agent = default!;
     private IChatClient _chatClient = default!;
-
-    private readonly IReadOnlyList<Suggestion> _suggestions =
-    [
-        new() { Label = "Say hello", Prompt = "Give me a friendly one-line greeting." },
-        new() { Label = "Fun fact", Prompt = "Tell me a surprising fun fact about the .NET ecosystem." },
-        new() { Label = "Explain AG-UI", Prompt = "In two sentences, what is the AG-UI protocol?" },
-    ];
 
     protected override void OnInitialized()
     {

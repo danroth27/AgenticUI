@@ -1,4 +1,5 @@
 using AgenticUI.AgentServer;
+using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
@@ -39,6 +40,10 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
 app.MapAGUIServer("/shared_state", agents.CreateSharedState())
     .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
+app.MapPredictiveStateEndpoint(
+    "/predictive_state_updates",
+    chatClient.AsIChatClient(),
+    jsonOptions);
 app.MapAGUIServer("/workflow", agents.CreateWorkflow());
 app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
 
@@ -56,6 +61,7 @@ app.MapGet("/", () => Results.Ok(new
         "/agentic_generative_ui",
         "/shared_state",
         "/reasoning",
+        "/predictive_state_updates",
         "/workflow",
         "/selective_approval"
     }

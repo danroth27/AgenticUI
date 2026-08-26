@@ -3,9 +3,23 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Describes the response to a function approval request.
+/// </summary>
 public enum ApprovalStatus
 {
+    /// <summary>
+    /// The function is waiting for a response.
+    /// </summary>
     Pending,
+
+    /// <summary>
+    /// The function was approved.
+    /// </summary>
     Approved,
-    Rejected
+
+    /// <summary>
+    /// The function was rejected.
+    /// </summary>
+    Rejected,
 }

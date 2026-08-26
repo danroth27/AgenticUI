@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class BlockQuoteNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents a block quotation.
+/// </summary>
+public class BlockQuoteNode : RichTextNode;

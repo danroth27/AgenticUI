@@ -1,0 +1,25 @@
+@if (Block.Result is null)
+{
+    <div class="ui-action-chip">Applying <code>@Block.ToolName</code> in the browser…</div>
+}
+else
+{
+    <div class="ui-action-chip">✓ ran <code>@Block.ToolName</code> in the browser</div>
+}
+
+@code {
+    private bool _invocationStarted;
+
+    [Parameter, EditorRequired]
+    public UIActionBlock Block { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_invocationStarted && Block.Result is null)
+        {
+            _invocationStarted = true;
+            await Block.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+}

@@ -19,7 +19,13 @@
     </div>
 
     <div class="scenario__chat">
-        <ChatPage Agent="_agent" Placeholder="Ask a question that needs some thought…" />
+        <ChatPage Agent="_agent" Placeholder="Ask a question that needs some thought…">
+            <MessageListContent>
+                <BlockRenderer TBlock="ReasoningActivityBlock" Context="reasoning">
+                    <ReasoningCard Block="reasoning" />
+                </BlockRenderer>
+            </MessageListContent>
+        </ChatPage>
     </div>
 </div>
 
@@ -30,7 +36,8 @@
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/reasoning");
-        _agent = new UIAgent(_chatClient);
+        _agent = new UIAgent(_chatClient, options =>
+            options.AddBlockHandler(new ReasoningActivityHandler()));
     }
 
     public void Dispose() => (_chatClient as IDisposable)?.Dispose();

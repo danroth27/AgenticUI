@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class TableRowNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents a table row.
+/// </summary>
+public class TableRowNode : RichTextNode;

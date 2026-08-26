@@ -24,11 +24,11 @@
         </aside>
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to change the accent color…">
-                <WelcomeContent>
-                    <BlockRenderer TBlock="UIActionBlock">
-                        <div class="ui-action-chip">🎨 ran <code>@context.ToolName</code> in the browser</div>
+                <MessageListContent>
+                    <BlockRenderer TBlock="UIActionBlock" Context="action">
+                        <AccentColorAction Block="action" />
                     </BlockRenderer>
-                </WelcomeContent>
+                </MessageListContent>
             </ChatPage>
         </div>
     </div>

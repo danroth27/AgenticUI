@@ -3,16 +3,29 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Represents a heading.
+/// </summary>
 public class HeadingNode : RichTextNode
 {
+    /// <summary>
+    /// Initializes a new instance of <see cref="HeadingNode"/>.
+    /// </summary>
     public HeadingNode()
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="HeadingNode"/>.
+    /// </summary>
+    /// <param name="level">The heading level.</param>
     public HeadingNode(int level)
     {
         Level = level;
     }
 
+    /// <summary>
+    /// Gets or sets the heading level.
+    /// </summary>
     public int Level { get; set; } = 1;
 }

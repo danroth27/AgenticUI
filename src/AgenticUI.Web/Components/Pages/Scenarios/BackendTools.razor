@@ -18,7 +18,7 @@
 
     <div class="scenario__chat">
         <ChatPage Agent="_agent" Placeholder="Ask for the weather in a city…">
-            <WelcomeContent>
+            <MessageListContent>
                 <BlockRenderer TBlock="FunctionInvocationContentBlock"
                                When="@(b => b.ToolName == "get_weather")">
                     @{
@@ -39,7 +39,7 @@
                         </div>
                     </div>
                 </BlockRenderer>
-            </WelcomeContent>
+            </MessageListContent>
         </ChatPage>
     </div>
 </div>
