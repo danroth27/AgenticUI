@@ -134,26 +134,41 @@ internal static class PredictiveStateEndpoint
             var document = call.Arguments?.TryGetValue("document", out var value) == true
                 ? value?.ToString()
                 : null;
-            if (document is null || document == lastEmittedDocument)
+            if (document is null)
             {
                 return [];
             }
 
             var events = new List<BaseEvent>();
-            var startIndex = lastEmittedDocument is not null &&
-                document.StartsWith(lastEmittedDocument, StringComparison.Ordinal)
-                    ? lastEmittedDocument.Length
-                    : 0;
-
-            const int chunkSize = 10;
-            for (var index = startIndex; index < document.Length; index += chunkSize)
+            if (document != lastEmittedDocument)
             {
-                var length = Math.Min(chunkSize, document.Length - index);
-                var state = new DocumentState { Document = document[..(index + length)] };
-                events.Add(new StateSnapshotEvent
+                var startIndex = lastEmittedDocument is not null &&
+                    document.StartsWith(lastEmittedDocument, StringComparison.Ordinal)
+                        ? lastEmittedDocument.Length
+                        : 0;
+
+                if (document.Length == 0)
                 {
-                    Snapshot = JsonSerializer.SerializeToElement(state, jsonOptions),
-                });
+                    events.Add(new StateSnapshotEvent
+                    {
+                        Snapshot = JsonSerializer.SerializeToElement(
+                            new DocumentState(),
+                            jsonOptions),
+                    });
+                }
+
+                const int chunkSize = 10;
+                for (var index = startIndex; index < document.Length; index += chunkSize)
+                {
+                    var length = Math.Min(chunkSize, document.Length - index);
+                    var state = new DocumentState { Document = document[..(index + length)] };
+                    events.Add(new StateSnapshotEvent
+                    {
+                        Snapshot = JsonSerializer.SerializeToElement(state, jsonOptions),
+                    });
+                }
+
+                lastEmittedDocument = document;
             }
 
             events.Add(new ToolCallResultEvent
@@ -182,7 +197,6 @@ internal static class PredictiveStateEndpoint
                 events.Add(new ToolCallEndEvent { ToolCallId = confirmationCallId });
             }
 
-            lastEmittedDocument = document;
             return events;
         });
 

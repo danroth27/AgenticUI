@@ -26,13 +26,13 @@ The core architecture works well:
 - Microsoft Foundry works through its OpenAI-compatible endpoint without an Azure-specific application layer.
 - Streaming chat, backend tools, frontend tools, human approval, shared state, generative UI, reasoning summaries, and predictive-state UX all work end to end after the application-level integrations described below.
 
-The remaining gaps are mostly at the boundary between the AG-UI event stream and the evolving Blazor AI components. The highest-value follow-up is replacing the predictive-state demo's synthetic snapshots with genuinely paced model argument updates.
+The remaining gaps are mostly at the boundary between the AG-UI event stream and the evolving Blazor AI components. The primary predictive-state fidelity gap is that AG-UI can preserve model-paced tool arguments on the wire, but the current client and Components.AI state APIs do not provide an end-to-end path from those fragments to predictive state.
 
 ## Actionable findings
 
 | Priority | Finding | Current application workaround | Recommended action |
 | --- | --- | --- | --- |
-| High | Predictive state is visually incremental but not model-paced | Emit ten-character state snapshots from the completed `write_document_local` call | Use AG-UI 0.0.5's streaming argument hook and add a supported partial-arguments-to-state path |
+| High | Predictive state is visually incremental but not model-paced | Emit ten-character state snapshots from the completed `write_document_local` call | Keep the Dojo-aligned behavior accurately labeled; pursue true streaming as a separate cross-layer enhancement |
 | Medium | `UIActionBlock` does not execute automatically | Invoke it from the rendered Blazor component | Document the requirement clearly or provide a standard auto-run renderer |
 | Medium | Components.AI no longer includes a reasoning block handler | Register an application `ActivityHandler` and custom renderer | Restore or publish a reusable default reasoning handler |
 | Medium | Typed client state is not automatically sent with a run | Populate `RunAgentInput.State` with `RawRepresentationFactory` | Add a symmetric outbound state hook to `UIAgent<TState>` |
@@ -47,18 +47,18 @@ The predictive-state scenario works in the browser, but it does not yet stream s
 
 `AGUIStreamOptions.MapCall("write_document_local", ...)` receives a completed `FunctionCallContent`. The current AgenticUI implementation and the official .NET Dojo then split the complete document into ten-character prefixes and emit a burst of `StateSnapshotEvent` values. This creates the intended visual progression, but all snapshots are generated after the provider has finished the tool call.
 
-AG-UI 0.0.5 materially changes the available implementation path. `AGUIStreamOptions.MapStreamingToolCallArguments(...)` can extract provider-native argument fragments from each `ChatResponseUpdate.RawRepresentation` and preserve them as incremental `TOOL_CALL_ARGS` events. Microsoft.Extensions.AI still exposes the typed `FunctionCallContent` only after coalescing, so the extractor is necessarily provider-specific.
+The official .NET Dojo already uses AG-UI 0.0.5. That release adds `AGUIStreamOptions.MapStreamingToolCallArguments(...)`, which can extract provider-native argument fragments from each `ChatResponseUpdate.RawRepresentation` and preserve them as incremental `TOOL_CALL_ARGS` events. This is an enabling wire-level hook, not a replacement predictive-state implementation.
 
-The remaining work is to turn those fragments into predictive state:
+`AGUI.Client` accumulates the streamed argument events and produces a typed `FunctionCallContent` only after `TOOL_CALL_END`. Consequently, Components.AI's `UIAgent<TState>` still does not receive partial arguments that its state mapper can apply predictively. A genuinely model-paced implementation requires additional cross-layer work:
 
 1. Register a Foundry/OpenAI fragment extractor with `MapStreamingToolCallArguments(...)`.
 2. Incrementally repair and parse the incomplete JSON argument.
-3. Map the growing `document` argument to `AgentState<T>.SetPredictiveState(...)`.
+3. Either emit state snapshots from those fragments on the server or expose the fragments incrementally to the Components.AI state mapper.
 4. Keep the completed tool call and confirmation action balanced so conversation history remains valid.
 
-The SDK does not currently provide a provider-neutral extractor, a partial-JSON helper, or a declarative streamed-argument-to-state mapper. The default HTTP transport is also internal, which makes observing raw events on the client unnecessarily difficult. These related ergonomics are tracked by [ag-ui-protocol/ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245).
+The SDK does not currently provide a provider-neutral extractor, a partial-JSON helper, or an end-to-end streamed-argument-to-state mapper. The default HTTP transport is also internal, which makes observing raw events on the client unnecessarily difficult. These related ergonomics are tracked by [ag-ui-protocol/ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245).
 
-**Action for AgenticUI:** either implement the true fragment path or label the current effect as simulated progression. Do not describe the existing `MapCall` loop as genuine predictive streaming.
+**Action for AgenticUI:** retain the simple, provider-neutral implementation shared with the official Dojo and label its visual progression accurately. Treat genuine model-paced predictive state as a separate enhancement rather than an AG-UI 0.0.5 migration.
 
 ### 2. Frontend UI actions require explicit invocation
 
@@ -194,7 +194,7 @@ The following items should not be treated as active gaps:
 - **Approval content requires `MEAI001` suppression:** resolved in Microsoft.Extensions.AI 10.6.0.
 - **Client approval resume requires manual AG-UI identifiers:** disproven; normal conversation reuse is sufficient.
 - **Conditional approval is unavailable in .NET:** resolved at the MAF agent layer by `UseToolApproval` and `AutoApprovalRules`.
-- **Server-side streamed tool arguments cannot survive MEAI coalescing:** superseded by AG-UI 0.0.5's `MapStreamingToolCallArguments(...)`. The remaining gap is mapping those fragments conveniently into predictive state.
+- **Server-side streamed tool arguments cannot survive MEAI coalescing:** partially resolved by AG-UI 0.0.5's `MapStreamingToolCallArguments(...)`, which preserves the fragments as AG-UI events. The remaining gap is exposing or mapping those events incrementally into Components.AI predictive state.
 - **`AgentSession.StateBag` should be emitted automatically as AG-UI state:** rejected as unsafe and closed as not planned in [microsoft/agent-framework#4177](https://github.com/microsoft/agent-framework/issues/4177). `StateBag` can contain internal provider and session data; frontend state must be projected explicitly.
 - **dotnet/aspnetcore#67673 is the current Components.AI source:** superseded. That PR closed without merge; AgenticUI now tracks the cumulative predictive-state branch recorded in the baseline above.
 
