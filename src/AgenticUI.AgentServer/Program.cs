@@ -1,4 +1,5 @@
 using AgenticUI.AgentServer;
+using AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
@@ -31,6 +32,7 @@ var agents = new AgentCatalog(chatClient, reasoningChatClient);
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
 app.MapAGUIServer("/backend_tool_rendering", agents.CreateBackendToolRendering());
 app.MapAGUIServer("/human_in_the_loop", agents.CreateHumanInTheLoop());
+app.MapAGUIServer("/frontend_tools", agents.CreateFrontendTools());
 app.MapAGUIServer("/tool_based_generative_ui", agents.CreateToolBasedGenerativeUI());
 app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
     .WithMetadata(new AGUIStreamOptions()
@@ -39,8 +41,10 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
 app.MapAGUIServer("/shared_state", agents.CreateSharedState())
     .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
-app.MapAGUIServer("/workflow", agents.CreateWorkflow());
-app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
+app.MapPredictiveStateEndpoint(
+    "/predictive_state_updates",
+    chatClient.AsIChatClient(),
+    jsonOptions);
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -52,12 +56,12 @@ app.MapGet("/", () => Results.Ok(new
         "/agentic_chat",
         "/backend_tool_rendering",
         "/human_in_the_loop",
+        "/frontend_tools",
         "/tool_based_generative_ui",
         "/agentic_generative_ui",
         "/shared_state",
         "/reasoning",
-        "/workflow",
-        "/selective_approval"
+        "/predictive_state_updates"
     }
 }));
 

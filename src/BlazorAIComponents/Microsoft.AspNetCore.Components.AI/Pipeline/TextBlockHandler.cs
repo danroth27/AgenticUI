@@ -5,6 +5,8 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+// Fallback handler: claims TextContent and accumulates it into a single block for the
+// duration of a model message. It runs last so more specific handlers get first refusal.
 internal sealed class TextBlockHandler : ContentBlockHandler<RichContentBlock>
 {
     public override BlockMappingResult<RichContentBlock> Handle(
@@ -39,10 +41,8 @@ internal sealed class TextBlockHandler : ContentBlockHandler<RichContentBlock>
             state.Id = context.Update.MessageId ?? Guid.NewGuid().ToString("N");
             return BlockMappingResult<RichContentBlock>.Emit(state, state);
         }
-        else
-        {
-            return BlockMappingResult<RichContentBlock>.Update(state);
-        }
+
+        return BlockMappingResult<RichContentBlock>.Update(state);
     }
 
     internal static void RebuildParagraphs(RichContentBlock state)

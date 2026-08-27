@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class StrikethroughNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents struck-through text.
+/// </summary>
+public class StrikethroughNode : RichTextNode;

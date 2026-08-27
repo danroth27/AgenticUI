@@ -3,9 +3,23 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Describes the syntax used by a reference.
+/// </summary>
 public enum ReferenceKind
 {
+    /// <summary>
+    /// A shortcut reference.
+    /// </summary>
     Shortcut,
+
+    /// <summary>
+    /// A collapsed reference.
+    /// </summary>
     Collapsed,
-    Full
+
+    /// <summary>
+    /// A full reference.
+    /// </summary>
+    Full,
 }

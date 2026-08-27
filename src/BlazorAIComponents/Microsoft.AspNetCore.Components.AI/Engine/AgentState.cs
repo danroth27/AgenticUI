@@ -3,58 +3,181 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Holds observable state associated with a <see cref="UIAgent{TState}"/>.
+/// </summary>
+/// <typeparam name="T">The type of state.</typeparam>
 public class AgentState<T> where T : class, new()
 {
-    private T _value;
     private readonly List<Action> _callbacks = new();
+    private T _value;
+    private T? _valueBeforePrediction;
+    private T? _valueBeforeRestore;
+    private T? _valueBeforePredictionBeforeRestore;
+    private bool _isRestoring;
 
     internal AgentState(T? initialValue = null)
     {
         _value = initialValue ?? new T();
     }
 
+    /// <summary>
+    /// Gets or sets the current state value.
+    /// </summary>
     public T Value
     {
         get => _value;
         set
         {
+            ArgumentNullException.ThrowIfNull(value);
+            _valueBeforePrediction = null;
             _value = value;
+            if (!_isRestoring)
+            {
+                NotifyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether <see cref="Value"/> contains provisional predictive state.
+    /// </summary>
+    public bool HasPendingPredictiveState => _valueBeforePrediction is not null;
+
+    /// <summary>
+    /// Accepts the current predictive state as the committed value.
+    /// </summary>
+    public void AcceptPredictiveState()
+    {
+        if (_valueBeforePrediction is null)
+        {
+            return;
+        }
+
+        _valueBeforePrediction = null;
+        if (!_isRestoring)
+        {
             NotifyChanged();
         }
     }
 
+    /// <summary>
+    /// Rejects the current predictive state and restores the value from before the prediction.
+    /// </summary>
+    public void RejectPredictiveState()
+    {
+        if (_valueBeforePrediction is not { } previousValue)
+        {
+            return;
+        }
+
+        _valueBeforePrediction = null;
+        _value = previousValue;
+        if (!_isRestoring)
+        {
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Registers a callback invoked when <see cref="Value"/> changes.
+    /// </summary>
+    /// <param name="callback">The callback to invoke.</param>
+    /// <returns>A registration that removes the callback when disposed.</returns>
     public IDisposable OnChanged(Action callback)
     {
+        ArgumentNullException.ThrowIfNull(callback);
         _callbacks.Add(callback);
         return new CallbackRegistration(_callbacks, callback);
     }
 
-    internal void NotifyChanged()
+    internal void SetPredictiveValue(T value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        _valueBeforePrediction ??= _value;
+        _value = value;
+        if (!_isRestoring)
+        {
+            NotifyChanged();
+        }
+    }
+
+    internal void BeginRestore()
+    {
+        if (_isRestoring)
+        {
+            throw new InvalidOperationException("A state restore is already in progress.");
+        }
+
+        _valueBeforeRestore = _value;
+        _valueBeforePredictionBeforeRestore = _valueBeforePrediction;
+        _valueBeforePrediction = null;
+        _value = new T();
+        _isRestoring = true;
+    }
+
+    internal void CompleteRestore()
+    {
+        var valueBeforeRestore = _valueBeforeRestore;
+        var valueBeforePredictionBeforeRestore = _valueBeforePredictionBeforeRestore;
+        _valueBeforeRestore = null;
+        _valueBeforePredictionBeforeRestore = null;
+        _isRestoring = false;
+        var completed = false;
+        try
+        {
+            NotifyChanged();
+            completed = true;
+        }
+        finally
+        {
+            if (!completed)
+            {
+                _valueBeforeRestore = valueBeforeRestore;
+                _valueBeforePredictionBeforeRestore = valueBeforePredictionBeforeRestore;
+            }
+        }
+    }
+
+    internal void CancelRestore()
+    {
+        if (_valueBeforeRestore is not null)
+        {
+            _value = _valueBeforeRestore;
+            _valueBeforeRestore = null;
+        }
+
+        _valueBeforePrediction = _valueBeforePredictionBeforeRestore;
+        _valueBeforePredictionBeforeRestore = null;
+        _isRestoring = false;
+    }
+
+    private void NotifyChanged()
     {
         var snapshot = _callbacks.ToArray();
-        foreach (var cb in snapshot)
+        foreach (var callback in snapshot)
         {
-            cb();
+            callback();
         }
     }
 
     private sealed class CallbackRegistration : IDisposable
     {
-        private List<Action>? _list;
+        private List<Action>? _callbacks;
         private Action? _callback;
 
-        internal CallbackRegistration(List<Action> list, Action callback)
+        internal CallbackRegistration(List<Action> callbacks, Action callback)
         {
-            _list = list;
+            _callbacks = callbacks;
             _callback = callback;
         }
 
         public void Dispose()
         {
-            if (_list is not null && _callback is not null)
+            if (_callbacks is not null && _callback is not null)
             {
-                _list.Remove(_callback);
-                _list = null;
+                _callbacks.Remove(_callback);
+                _callbacks = null;
                 _callback = null;
             }
         }

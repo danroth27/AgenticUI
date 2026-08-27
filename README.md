@@ -12,11 +12,13 @@ wires the two together, and everything runs on **[Microsoft Foundry](https://lea
 | --- | --- | --- |
 | **Agentic chat** | Streaming, multi-turn chat (`TEXT_MESSAGE_*`) | `/agentic_chat` |
 | **Backend tools** | Server-side tool calls (`TOOL_CALL_*`) rendered as a custom card | `/backend_tool_rendering` |
-| **Frontend tools** | Client-side tool executed in the browser | `/tool_based_generative_ui` |
+| **Frontend tools** | Client-side tool executed in the browser | `/frontend_tools` |
+| **Tool-based generative UI** | Client tool arguments rendered as visual haiku cards | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
-| **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
+| **Shared state** | Bidirectional recipe state edited by the user and agent | `/shared_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
-| **Reasoning** | A reasoning model's chain of thought via `REASONING_*` events | `/reasoning` |
+| **Predictive state updates** | Stream proposed state, then accept or reject it | `/predictive_state_updates` |
+| **Reasoning** | A reasoning model's reasoning summary via `REASONING_*` events | `/reasoning` |
 
 ## Architecture
 
@@ -37,9 +39,9 @@ flowchart LR
   to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by Microsoft Foundry via
   `Microsoft.Agents.AI.OpenAI`.
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an
-  `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a
-  standard `IChatClient`. UI is rendered with the Blazor AI components (`ChatPage`, `MessageList`,
-  `BlockRenderer`, `UIAgent<TState>`, …).
+  `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), wrapped by the Dojo formatting pipeline
+  so streamed Markdown becomes `RichTextContent`. UI is rendered with the Blazor AI components
+  (`ChatPage`, `MessageList`, `BlockRenderer`, `UIAgent<TState>`, …).
 - **`AgenticUI.AppHost` / `AgenticUI.ServiceDefaults`** — Aspire orchestration and service discovery.
 
 ### Released packages used
@@ -48,14 +50,14 @@ Everything except the Blazor AI components uses released NuGet packages:
 
 - `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.15.0)
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
-- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Server` (0.0.4 — the AG-UI C# SDK)
+- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.5 — the AG-UI C# SDK)
 - `.NET Aspire` (13.4)
 
 ### The one exception: Blazor AI components
 
 The Blazor AI components (`Microsoft.AspNetCore.Components.AI`) are **in progress** in
-[dotnet/aspnetcore#67673](https://github.com/dotnet/aspnetcore/pull/67673) and not yet published to
-NuGet. To keep this sample **standalone**, a local copy of their source is checked in under
+the cumulative `javiercn-components-ai-09-predictive-state` branch in dotnet/aspnetcore and not yet
+published to NuGet. To keep this sample **standalone**, a local copy of their source is checked in under
 [`src/BlazorAIComponents/`](src/BlazorAIComponents/Microsoft.AspNetCore.Components.AI/NOTICE.md)
 (MIT-licensed, with
 provenance). The assembly and namespace match the upstream package, so swapping to the official
@@ -66,7 +68,7 @@ NuGet package later is a one-line change. Refresh the snapshot with
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- A compatible .NET SDK for the repository's `net10.0` projects
 - [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/) (or just `dotnet run` the AppHost)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
   `gpt-5-mini` deployment (used for both the general chat and reasoning scenarios).

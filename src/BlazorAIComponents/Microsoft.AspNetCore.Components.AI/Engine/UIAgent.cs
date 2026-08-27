@@ -9,6 +9,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Turns an <see cref="IChatClient"/> stream into content blocks the UI can render as they
+/// arrive, and keeps the conversation history for subsequent turns.
+/// </summary>
+/// <remarks>
+/// A <see cref="UIAgent"/> is protocol- and provider-neutral: it only depends on
+/// <see cref="IChatClient"/>, so any Microsoft.Extensions.AI client can drive it.
+/// </remarks>
+/// <example>
+/// <code>
+/// var agent = new UIAgent(chatClient);
+/// await foreach (var block in agent.SendMessageAsync(new ChatMessage(ChatRole.User, "Hello")))
+/// {
+///     Console.WriteLine(block.Id);
+/// }
+/// </code>
+/// </example>
 public class UIAgent : IDisposable
 {
     private readonly IChatClient _chatClient;
@@ -19,26 +36,56 @@ public class UIAgent : IDisposable
 
     internal UIAgentOptions Options => _options;
 
+    internal virtual void RejectPendingPredictiveState()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
     public UIAgent(IChatClient chatClient)
         : this(chatClient, configure: null)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="chatOptions">The options passed to the chat client.</param>
     public UIAgent(IChatClient chatClient, ChatOptions chatOptions)
         : this(chatClient, options => options.ChatOptions = chatOptions)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="chatOptions">The options passed to the chat client.</param>
+    /// <param name="loggerFactory">The logger factory used to trace block mapping.</param>
     public UIAgent(IChatClient chatClient, ChatOptions chatOptions, ILoggerFactory? loggerFactory)
         : this(chatClient, options => options.ChatOptions = chatOptions, loggerFactory)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="configure">A callback that configures the agent.</param>
     public UIAgent(IChatClient chatClient, Action<UIAgentOptions>? configure)
         : this(chatClient, configure, loggerFactory: null)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="configure">A callback that configures the agent.</param>
+    /// <param name="loggerFactory">The logger factory used to trace block mapping.</param>
     public UIAgent(IChatClient chatClient, Action<UIAgentOptions>? configure, ILoggerFactory? loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
@@ -48,29 +95,57 @@ public class UIAgent : IDisposable
         _logger = (ILogger?)loggerFactory?.CreateLogger<BlockMappingPipeline>() ?? NullLogger.Instance;
     }
 
+    /// <summary>
+    /// Sends a message and streams the resulting content blocks. Blocks are yielded as soon as
+    /// they are created; a block keeps changing (raising <see cref="ContentBlock.OnChanged(Action)"/>)
+    /// until it becomes <see cref="BlockLifecycleState.Inactive"/>.
+    /// </summary>
+    /// <param name="message">The message to send.</param>
+    /// <param name="cancellationToken">A token that cancels the response.</param>
+    /// <returns>The blocks produced by the message and by the model response to it.</returns>
     public async IAsyncEnumerable<ContentBlock> SendMessageAsync(
         ChatMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(message);
 
-        _history.Add(message);
-
-        var thread = _options.Thread;
-        thread?.AppendUserMessage(message);
-
-        var pipeline = new BlockMappingPipeline(_options, _logger);
-
-        // Process user message through pipeline
-        var userUpdate = new ChatResponseUpdate
-        {
-            Role = message.Role,
-            Contents = [.. message.Contents]
-        };
-        await foreach (var block in pipeline.Process(userUpdate, cancellationToken).ConfigureAwait(false))
+        await foreach (var block in SendMessagesAsync([message], cancellationToken).ConfigureAwait(false))
         {
             yield return block;
         }
+    }
+
+    internal async IAsyncEnumerable<ContentBlock> SendMessagesAsync(
+        IReadOnlyList<ChatMessage> messages,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var thread = _options.Thread;
+        foreach (var message in messages)
+        {
+            ArgumentNullException.ThrowIfNull(message);
+            _history.Add(message);
+        }
+
+        thread?.AppendMessages(messages);
+
+        var pipeline = new BlockMappingPipeline(_options, _logger);
+
+        // Process user messages through pipeline
+        foreach (var message in messages)
+        {
+            var userUpdate = new ChatResponseUpdate
+            {
+                Role = message.Role,
+                Contents = [.. message.Contents]
+            };
+            await foreach (var block in pipeline.Process(userUpdate, cancellationToken).ConfigureAwait(false))
+            {
+                yield return block;
+            }
+        }
+
         foreach (var block in pipeline.Finalize())
         {
             yield return block;
@@ -79,35 +154,29 @@ public class UIAgent : IDisposable
         // Stream assistant response
         UIAgentLog.StreamingAssistantResponse(_logger);
         var assistantUpdates = new List<ChatResponseUpdate>();
-        string? turnId = null;
+        var updateIndex = 0;
         var chatOptions = BuildChatOptions();
-
-        // If the thread detected a stateful LLM, propagate the ConversationId
         if (thread is { IsStateful: true, ConversationId: not null })
         {
-            chatOptions ??= new ChatOptions();
+            chatOptions = chatOptions?.Clone() ?? new ChatOptions();
             chatOptions.ConversationId = thread.ConversationId;
         }
 
-        var updateIndex = 0;
         await foreach (var update in _chatClient.GetStreamingResponseAsync(
             _history, chatOptions, cancellationToken).ConfigureAwait(false))
         {
             var contentTypes = string.Join(", ", update.Contents.Select(c => c.GetType().Name));
             UIAgentLog.ReceivedUpdate(_logger, updateIndex++, update.Role?.Value, contentTypes);
 
-            assistantUpdates.Add(update);
-            turnId ??= update.ResponseId;
-
             thread?.AppendUpdate(update);
 
             var processUpdate = ApplyStateMapper(update);
             if (processUpdate.Contents.Count == 0 && update.Contents.Count > 0)
             {
-                // State mapper consumed all content items — skip.
                 continue;
             }
 
+            assistantUpdates.Add(processUpdate);
             await foreach (var block in pipeline.Process(processUpdate, cancellationToken).ConfigureAwait(false))
             {
                 yield return block;
@@ -129,109 +198,110 @@ public class UIAgent : IDisposable
         }
 
         thread?.CompleteTurn();
-
         UIAgentLog.AddedToHistory(_logger, response.Messages.Count);
     }
 
-    internal virtual object? AgentStateObject => null;
-
+    /// <summary>
+    /// Restores the committed conversation and typed state from the configured thread.
+    /// </summary>
+    /// <remarks>
+    /// Restoration replaces the current history and typed state only after all committed
+    /// updates have been replayed successfully.
+    /// </remarks>
+    /// <param name="cancellationToken">A token that cancels restoration.</param>
+    /// <returns>The restored content blocks in chronological order.</returns>
     public async Task<IReadOnlyList<ContentBlock>> RestoreAsync(
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        var thread = _options.Thread;
-        if (thread is null)
-        {
-            return Array.Empty<ContentBlock>();
-        }
-
-        var updates = thread.GetUpdates();
-        if (updates.Count == 0)
-        {
-            return Array.Empty<ContentBlock>();
-        }
-
-        _history.Clear();
-
+        var previousHistory = _history.ToArray();
+        var restoredHistory = new List<ChatMessage>();
+        var updates = _options.Thread?.GetUpdates() ?? [];
         var blocks = new List<ContentBlock>();
         var pipeline = new BlockMappingPipeline(_options, _logger);
         var assistantUpdates = new List<ChatResponseUpdate>();
 
-        foreach (var update in updates)
+        BeginStateRestore();
+        var restoreCompleted = false;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (update.Role == ChatRole.User)
+            foreach (var update in updates)
             {
-                // Flush previous assistant group into history
-                if (assistantUpdates.Count > 0)
-                {
-                    var response = assistantUpdates.ToChatResponse();
-                    foreach (var msg in response.Messages)
-                    {
-                        _history.Add(msg);
-                    }
-                    assistantUpdates.Clear();
+                cancellationToken.ThrowIfCancellationRequested();
 
-                    // Finalize the previous turn's pipeline and start a new one
-                    foreach (var block in pipeline.Finalize())
+                if (IsRequestRole(update.Role))
+                {
+                    if (assistantUpdates.Count > 0)
+                    {
+                        AddResponseToHistory(assistantUpdates, restoredHistory);
+                        assistantUpdates.Clear();
+
+                        blocks.AddRange(pipeline.Finalize());
+                        pipeline = new BlockMappingPipeline(_options, _logger);
+                    }
+
+                    restoredHistory.Add(new ChatMessage(update.Role!.Value, [.. update.Contents]));
+                    await foreach (var block in pipeline.Process(update, cancellationToken).ConfigureAwait(false))
                     {
                         blocks.Add(block);
                     }
+
+                    blocks.AddRange(pipeline.Finalize());
                     pipeline = new BlockMappingPipeline(_options, _logger);
                 }
-
-                // Add user message to history
-                var userMessage = new ChatMessage(update.Role ?? ChatRole.User, [.. update.Contents]);
-                _history.Add(userMessage);
-
-                // Process user update through pipeline
-                await foreach (var block in pipeline.Process(update, cancellationToken).ConfigureAwait(false))
+                else
                 {
-                    blocks.Add(block);
-                }
-                foreach (var block in pipeline.Finalize())
-                {
-                    blocks.Add(block);
-                }
+                    var processUpdate = ApplyStateMapper(update);
+                    if (processUpdate.Contents.Count == 0 && update.Contents.Count > 0)
+                    {
+                        continue;
+                    }
 
-                // Start a new pipeline for the assistant response
-                pipeline = new BlockMappingPipeline(_options, _logger);
+                    assistantUpdates.Add(processUpdate);
+                    await foreach (var block in pipeline.Process(processUpdate, cancellationToken).ConfigureAwait(false))
+                    {
+                        blocks.Add(block);
+                    }
+                }
             }
-            else
+
+            if (assistantUpdates.Count > 0)
             {
-                assistantUpdates.Add(update);
-
-                var processUpdate = ApplyStateMapper(update);
-                if (processUpdate.Contents.Count == 0 && update.Contents.Count > 0)
-                {
-                    continue;
-                }
-
-                await foreach (var block in pipeline.Process(processUpdate, cancellationToken).ConfigureAwait(false))
-                {
-                    blocks.Add(block);
-                }
+                AddResponseToHistory(assistantUpdates, restoredHistory);
             }
-        }
 
-        // Flush trailing assistant group
-        if (assistantUpdates.Count > 0)
+            blocks.AddRange(pipeline.Finalize());
+            cancellationToken.ThrowIfCancellationRequested();
+
+            RejectPendingPredictiveState();
+            _history.Clear();
+            _history.AddRange(restoredHistory);
+            CompleteStateRestore();
+            restoreCompleted = true;
+            return blocks;
+        }
+        finally
         {
-            var response = assistantUpdates.ToChatResponse();
-            foreach (var msg in response.Messages)
+            if (!restoreCompleted)
             {
-                _history.Add(msg);
+                _history.Clear();
+                _history.AddRange(previousHistory);
+                CancelStateRestore();
             }
         }
+    }
 
-        foreach (var block in pipeline.Finalize())
-        {
-            blocks.Add(block);
-        }
+    internal virtual void BeginStateRestore()
+    {
+    }
 
-        return blocks;
+    internal virtual void CompleteStateRestore()
+    {
+    }
+
+    internal virtual void CancelStateRestore()
+    {
     }
 
     internal virtual ChatResponseUpdate ApplyStateMapper(ChatResponseUpdate update)
@@ -247,39 +317,19 @@ public class UIAgent : IDisposable
         return context.HasHandledContent ? context.GetFilteredUpdate() : update;
     }
 
-    internal async Task<FunctionResultContent> InvokeToolAsync(
-        FunctionCallContent call, CancellationToken cancellationToken)
+    private static void AddResponseToHistory(
+        List<ChatResponseUpdate> updates,
+        List<ChatMessage> history)
     {
-        var function = FindBackendFunction(call.Name);
-        if (function is null)
+        var response = updates.ToChatResponse();
+        foreach (var message in response.Messages)
         {
-            UIAgentLog.BackendFunctionNotFound(_logger, call.Name);
-            return new FunctionResultContent(call.CallId, $"Error: Function '{call.Name}' not found.");
+            history.Add(message);
         }
-
-        UIAgentLog.InvokingBackendFunction(_logger, call.Name, call.CallId);
-        var args = call.Arguments is not null ? new AIFunctionArguments(call.Arguments) : null;
-        var result = await function.InvokeAsync(args, cancellationToken);
-        return new FunctionResultContent(call.CallId, result);
     }
 
-    private AIFunction? FindBackendFunction(string name)
-    {
-        if (_options.ChatOptions?.Tools is null)
-        {
-            return null;
-        }
-
-        foreach (var tool in _options.ChatOptions.Tools)
-        {
-            if (tool is AIFunction function && function.Name == name)
-            {
-                return function;
-            }
-        }
-
-        return null;
-    }
+    private static bool IsRequestRole(ChatRole? role)
+        => role == ChatRole.User || role == ChatRole.Tool;
 
     private ChatOptions? BuildChatOptions()
     {
@@ -289,21 +339,25 @@ public class UIAgent : IDisposable
         }
 
         var chatOptions = _options.ChatOptions?.Clone() ?? new ChatOptions();
-        var tools = new List<AITool>();
-        if (chatOptions.Tools is not null)
-        {
-            tools.AddRange(chatOptions.Tools);
-        }
+        var tools = chatOptions.Tools is null
+            ? new List<AITool>()
+            : [.. chatOptions.Tools];
+
         foreach (var action in _options.UIActions.Values)
         {
             tools.Add(action.AsDeclarationOnly());
         }
+
         chatOptions.Tools = tools;
         return chatOptions;
     }
 
+    /// <summary>
+    /// Releases the resources used by this agent.
+    /// </summary>
     public void Dispose()
     {
         _disposed = true;
+        GC.SuppressFinalize(this);
     }
 }

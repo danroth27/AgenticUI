@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class ParagraphNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents a paragraph.
+/// </summary>
+public class ParagraphNode : RichTextNode;

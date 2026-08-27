@@ -5,7 +5,6 @@ using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
 
@@ -72,13 +71,26 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
         });
     }
 
+    /// <summary>Frontend tools — the model calls a client-side action that runs in the browser.</summary>
+    public AIAgent CreateFrontendTools() =>
+        this._chatClient.AsAIAgent(
+            name: "FrontendToolsAgent",
+            description: "An agent that calls client-side tools.",
+            instructions: "Use the tools the client provides when the user asks you to change the page.");
+
     /// <summary>Tool-based generative UI — the model calls client tools that render bespoke UI.</summary>
     public AIAgent CreateToolBasedGenerativeUI() =>
         this._chatClient.AsAIAgent(
             name: "ToolBasedGenerativeUIAgent",
             description: "An agent that calls client tools which render generative UI.",
-            instructions: "You are a helpful assistant. Use the tools the client provides to render rich UI " +
-                          "instead of describing things in plain text when appropriate.");
+            instructions: """
+                You are a Japanese haiku assistant.
+                For every haiku request, call generate_haiku with exactly three Japanese lines, exactly
+                three English translation lines and an attractive CSS gradient.
+                Do not print the haiku as ordinary chat text before calling the tool.
+                After the tool returns, acknowledge completion in one short sentence without repeating
+                the haiku or its arguments.
+                """);
 
     /// <summary>Agentic generative UI — plan/progress rendered live from state snapshots and deltas.</summary>
     public AIAgent CreateAgenticGenerativeUI()
@@ -133,7 +145,7 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             description: "Generate or update the shared recipe and display it to the user.",
             AgentServerSerializerContext.Default.Options);
 
-        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        var agent = this._chatClient.AsAIAgent(new ChatClientAgentOptions
         {
             Name = "SharedStateAgent",
             Description = "An agent that keeps a structured recipe in sync with the client.",
@@ -147,6 +159,8 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                       tool with a COMPLETE recipe: a title, skill_level, cooking_time, special_preferences, the
                       full list of ingredients (each with an icon, name and amount) and the step-by-step
                       instructions.
+                    - Use Beginner, Intermediate, or Advanced for skill_level.
+                    - Use 15 min, 30 min, 45 min, 1 hr, 1.5 hr, or 2 hr for cooking_time.
                     - Always include every ingredient the recipe needs, keeping any the user already added.
                     - Keep the ingredient list simple so it stays readable in a compact card:
                       `name` is just the ingredient (e.g. "Bread flour", "Olive oil") with no parenthetical
@@ -160,20 +174,21 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 Tools = [generateRecipe],
             }
         });
+
+        return new RecipeStateAgent(agent);
     }
 
-    /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
+    /// <summary>Reasoning — surfaces a reasoning model's reasoning summary separately from its answer.</summary>
     public AIAgent CreateReasoning() =>
         this._reasoningChatClient.AsAIAgent(new ChatClientAgentOptions
         {
             Name = "ReasoningAgent",
-            Description = "A reasoning model that shows its thinking.",
+            Description = "A reasoning model that returns a reasoning summary.",
             ChatOptions = new ChatOptions
             {
-                // Keep the answer plain: the Blazor AI components render text, not markdown. Avoid
-                // asking for brevity — instructions like "answer in one or two sentences, no
-                // step-by-step recap" measurably suppress the model's reasoning summary, leaving the
-                // thought-process panel empty.
+                // Keep the answer formatting simple. Avoid asking for brevity — instructions like
+                // "answer in one or two sentences, no step-by-step recap" measurably suppress the
+                // model's reasoning summary, leaving the reasoning panel empty.
                 Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
                     + "notation, or bullet points.",
                 // Reasoning summaries are opt-in. `ChatOptions.Reasoning` is the provider-neutral
@@ -183,44 +198,6 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 Reasoning = new ReasoningOptions { Output = ReasoningOutput.Full }
             }
         });
-
-    /// <summary>[Test] A sequential workflow (researcher -> reporter) exposed as an AG-UI agent.</summary>
-    public AIAgent CreateWorkflow()
-    {
-        AIAgent researcher = this._chatClient.AsAIAgent(
-            name: "researcher",
-            instructions: "Research the user's topic and write a short, factual brief in under 80 words.");
-        AIAgent reporter = this._chatClient.AsAIAgent(
-            name: "reporter",
-            instructions: "Summarize the researcher's brief into a single clear sentence.");
-
-        return AgentWorkflowBuilder
-            .BuildSequential(researcher, reporter)
-            .AsAIAgent(name: "ResearchWorkflow");
-    }
-
-    /// <summary>[Test] Selective approval: one tool requires approval, another does not.</summary>
-    public AIAgent CreateSelectiveApproval()
-    {
-        AITool getBalance = AIFunctionFactory.Create(
-            GetAccountBalance, name: "get_account_balance",
-            description: "Get the current account balance. Does not require approval.");
-
-        AITool transfer = new ApprovalRequiredAIFunction(AIFunctionFactory.Create(
-            TransferFunds, name: "transfer_funds",
-            description: "Transfer money to another account."));
-
-        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
-        {
-            Name = "SelectiveApprovalAgent",
-            ChatOptions = new ChatOptions
-            {
-                Instructions = "You are a banking assistant. Use get_account_balance to check balances " +
-                               "and transfer_funds to move money. Call the tools directly.",
-                Tools = [getBalance, transfer]
-            }
-        });
-    }
 
     private static WeatherInfo GetWeather(string location) => new()
     {
@@ -233,9 +210,4 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
 
     private static string BookMeeting(string title, string time) => $"Booked '{title}' for {time}.";
 
-    private static string GetAccountBalance() => "Your current balance is $1,250.00.";
-
-    private static string TransferFunds(string toAccount, decimal amount) =>
-        $"Transferred {amount:C} to account {toAccount}.";
 }
-

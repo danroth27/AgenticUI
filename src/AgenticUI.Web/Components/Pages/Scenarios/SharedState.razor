@@ -1,5 +1,7 @@
 @page "/shared-state"
+@using System.Text.Json
 @inject AgentServerConnection Agents
+@inject ILoggerFactory LoggerFactory
 @implements IDisposable
 
 <PageTitle>Shared state</PageTitle>
@@ -8,87 +10,183 @@
     <div class="scenario__intro">
         <h1>Shared state</h1>
         <p>
-            The agent and the UI share a structured object. The agent returns a recipe as JSON, which the
-            server emits as an AG-UI <code>STATE_SNAPSHOT</code>; the client maps it into a strongly-typed
-            <code>UIAgent&lt;RecipeState&gt;</code> and renders the live recipe card. Try:
-            <em>"Make me a vegetarian pasta recipe."</em>
+            Edit the structured recipe yourself or ask the agent to improve it. Local changes are sent
+            back with the next request, and agent changes return as AG-UI <code>STATE_SNAPSHOT</code>
+            events mapped into a strongly typed <code>UIAgent&lt;RecipeState&gt;</code>. Try changing an
+            ingredient, then ask: <em>"Make this recipe vegan."</em>
         </p>
     </div>
 
-    <div class="scenario__split">
-        <aside class="scenario__panel">
-            <div class="panel-card recipe">
-                @{ var r = _agent.State.Value.Recipe; }
-                @if (string.IsNullOrEmpty(r.Title))
-                {
-                    <div class="panel-empty">The recipe will appear here as the agent builds it.</div>
-                }
-                else
-                {
-                    <h2>@r.Title</h2>
-                    <div class="recipe__meta">
-                        @if (!string.IsNullOrEmpty(r.SkillLevel)) { <span>🎚️ @r.SkillLevel</span> }
-                        @if (!string.IsNullOrEmpty(r.CookingTime)) { <span>⏱️ @r.CookingTime</span> }
+    <AgentBoundary @key="_agent" Agent="_agent">
+        <div class="scenario__split">
+            <aside class="scenario__panel">
+                <div class="shared-recipe">
+                    <RecipeEditor Recipe="_agent.State.Value.Recipe"
+                                  RecipeChanged="HandleRecipeChanged"
+                                  ChangedSections="_changedSections"
+                                  OnReset="Reset" />
+                </div>
+            </aside>
+            <div class="scenario__chat">
+                <div class="sc-ai-root sc-ai-chat-page">
+                    <div class="sc-ai-chat-page__body">
+                        <MessageList>
+                            <EmptyContent>
+                                <p>Edit the recipe yourself or ask the agent to improve it.</p>
+                            </EmptyContent>
+                        </MessageList>
                     </div>
-                    @if (r.SpecialPreferences.Count > 0)
-                    {
-                        <div class="recipe__tags">
-                            @foreach (var p in r.SpecialPreferences) { <span class="tag">@p</span> }
+                    <div class="sc-ai-chat-page__footer">
+                        <div class="sc-ai-chat-page__input-container">
+                            <MessageInput Placeholder="Ask for a recipe…" />
                         </div>
-                    }
-                    @if (r.Ingredients.Count > 0)
-                    {
-                        <h3>Ingredients</h3>
-                        <ul class="recipe__ingredients">
-                            @foreach (var i in r.Ingredients)
-                            {
-                                <li>
-                                    <span class="ingredient">@i.Icon @i.Name</span>
-                                    <span class="amount">@i.Amount</span>
-                                </li>
-                            }
-                        </ul>
-                    }
-                    @if (r.Instructions.Count > 0)
-                    {
-                        <h3>Instructions</h3>
-                        <ol class="recipe__steps">
-                            @foreach (var s in r.Instructions) { <li>@s</li> }
-                        </ol>
-                    }
-                }
+                    </div>
+                </div>
             </div>
-        </aside>
-        <div class="scenario__chat">
-            <ChatPage Agent="_agent" Placeholder="Ask for a recipe…" />
         </div>
-    </div>
+    </AgentBoundary>
 </div>
 
 @code {
+    private static readonly JsonSerializerOptions s_jsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     private UIAgent<RecipeState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedRegistration;
+    private readonly HashSet<string> _changedSections = new(StringComparer.Ordinal);
+    private Recipe _lastRecipe = default!;
+    private bool _isApplyingLocalState;
 
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/shared_state");
-        _agent = new UIAgent<RecipeState>(_chatClient, options =>
-        {
-            options.StateMapper = ctx =>
-            {
-                if (AguiState.TryMap<RecipeState>(ctx, () => _agent.State.Value, out var next))
-                {
-                    if (next is not null)
-                    {
-                        ctx.SetState(next);
-                    }
-                    return true;
-                }
-                return false;
-            };
-        });
-        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+        Reset();
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    private UIAgent<RecipeState> CreateAgent(RecipeState initialState)
+    {
+        var thread = new DojoConversationThread(Guid.NewGuid().ToString("N"));
+
+        return new UIAgent<RecipeState>(_chatClient, options =>
+        {
+            options.Thread = thread;
+            options.ChatOptions = new ChatOptions
+            {
+                RawRepresentationFactory = _ => new RunAgentInput
+                {
+                    ThreadId = thread.ThreadId,
+                    State = JsonSerializer.SerializeToElement(
+                        _agent.State.Value,
+                        s_jsonOptions),
+                },
+            };
+            options.StateMapper = ctx =>
+            {
+                if (ctx.Update.RawRepresentation is not StateSnapshotEvent snapshot)
+                {
+                    return;
+                }
+
+                var state = snapshot.Snapshot.Deserialize<RecipeState>(s_jsonOptions);
+                if (state?.Recipe is not null)
+                {
+                    ctx.SetState(state);
+                }
+            };
+        }, LoggerFactory, initialState);
+    }
+
+    private void HandleRecipeChanged(Recipe recipe)
+    {
+        _isApplyingLocalState = true;
+        try
+        {
+            _agent.State.Value = new RecipeState { Recipe = recipe };
+        }
+        finally
+        {
+            _isApplyingLocalState = false;
+        }
+    }
+
+    private void Reset()
+    {
+        var nextAgent = CreateAgent(CreateDefaultRecipe());
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        _agent = nextAgent;
+        _lastRecipe = _agent.State.Value.Recipe;
+        _changedSections.Clear();
+        _stateChangedRegistration = _agent.State.OnChanged(
+            OnStateChanged);
+    }
+
+    private void OnStateChanged()
+    {
+        var recipe = _agent.State.Value.Recipe;
+        _changedSections.Clear();
+        if (!_isApplyingLocalState)
+        {
+            AddChangedSections(_lastRecipe, recipe);
+        }
+
+        _lastRecipe = recipe;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void AddChangedSections(Recipe previous, Recipe current)
+    {
+        if (previous.Title != current.Title)
+        {
+            _changedSections.Add("title");
+        }
+        if (previous.SkillLevel != current.SkillLevel ||
+            previous.CookingTime != current.CookingTime)
+        {
+            _changedSections.Add("details");
+        }
+        if (!previous.SpecialPreferences.SequenceEqual(
+            current.SpecialPreferences,
+            StringComparer.Ordinal))
+        {
+            _changedSections.Add("preferences");
+        }
+        if (!previous.Ingredients.SequenceEqual(current.Ingredients))
+        {
+            _changedSections.Add("ingredients");
+        }
+        if (!previous.Instructions.SequenceEqual(current.Instructions, StringComparer.Ordinal))
+        {
+            _changedSections.Add("instructions");
+        }
+    }
+
+    private static RecipeState CreateDefaultRecipe() => new()
+    {
+        Recipe = new Recipe
+        {
+            Title = "Carrot Cake",
+            SkillLevel = "Intermediate",
+            CookingTime = "45 min",
+            SpecialPreferences = ["Vegetarian"],
+            Ingredients =
+            [
+                new Ingredient { Icon = "🥕", Name = "Carrots", Amount = "3 large, grated" },
+                new Ingredient { Icon = "🌾", Name = "All-purpose flour", Amount = "2 cups" },
+            ],
+            Instructions =
+            [
+                "Preheat the oven to 350°F (175°C).",
+                "Combine the ingredients and bake until a tester comes out clean.",
+            ],
+        },
+    };
+
+    public void Dispose()
+    {
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }

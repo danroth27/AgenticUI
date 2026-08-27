@@ -6,35 +6,77 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Turns an <see cref="IChatClient"/> stream into renderable content blocks and typed observable state.
+/// </summary>
+/// <typeparam name="TState">The type of state associated with the agent.</typeparam>
 public class UIAgent<TState> : UIAgent where TState : class, new()
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent{TState}"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="initialState">The initial state value.</param>
     public UIAgent(IChatClient chatClient, TState? initialState = null)
         : base(chatClient)
     {
         State = new AgentState<TState>(initialState);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent{TState}"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="chatOptions">The options passed to the chat client.</param>
+    /// <param name="initialState">The initial state value.</param>
     public UIAgent(IChatClient chatClient, ChatOptions chatOptions, TState? initialState = null)
         : base(chatClient, chatOptions)
     {
         State = new AgentState<TState>(initialState);
     }
 
-    public UIAgent(IChatClient chatClient, Action<UIAgentOptions> configure, TState? initialState = null)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent{TState}"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="configure">A callback that configures the agent.</param>
+    /// <param name="initialState">The initial state value.</param>
+    public UIAgent(
+        IChatClient chatClient,
+        Action<UIAgentOptions> configure,
+        TState? initialState = null)
         : base(chatClient, configure)
     {
         State = new AgentState<TState>(initialState);
     }
 
-    public UIAgent(IChatClient chatClient, Action<UIAgentOptions> configure, ILoggerFactory? loggerFactory, TState? initialState = null)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UIAgent{TState}"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client that produces model responses.</param>
+    /// <param name="configure">A callback that configures the agent.</param>
+    /// <param name="loggerFactory">The logger factory used to trace block mapping.</param>
+    /// <param name="initialState">The initial state value.</param>
+    public UIAgent(
+        IChatClient chatClient,
+        Action<UIAgentOptions> configure,
+        ILoggerFactory? loggerFactory,
+        TState? initialState = null)
         : base(chatClient, configure, loggerFactory)
     {
         State = new AgentState<TState>(initialState);
     }
 
+    /// <summary>
+    /// Gets the observable state associated with this agent.
+    /// </summary>
     public AgentState<TState> State { get; }
 
-    internal override object? AgentStateObject => State;
+    internal override void BeginStateRestore() => State.BeginRestore();
+
+    internal override void CompleteStateRestore() => State.CompleteRestore();
+
+    internal override void CancelStateRestore() => State.CancelRestore();
 
     internal override ChatResponseUpdate ApplyStateMapper(ChatResponseUpdate update)
     {
@@ -46,11 +88,30 @@ public class UIAgent<TState> : UIAgent where TState : class, new()
         var context = new StateMapperContext(update);
         Options.StateMapper(context);
 
-        if (context.StateValue is TState typedState)
+        if (context.StateValue is not null)
         {
-            State.Value = typedState;
+            if (context.StateValue is not TState typedState)
+            {
+                throw new InvalidOperationException(
+                    $"The state mapper returned a value of type '{context.StateValue.GetType()}', " +
+                    $"but this agent requires state of type '{typeof(TState)}'.");
+            }
+
+            if (context.IsPredictiveState)
+            {
+                State.SetPredictiveValue(typedState);
+            }
+            else
+            {
+                State.Value = typedState;
+            }
         }
 
         return context.HasHandledContent ? context.GetFilteredUpdate() : update;
+    }
+
+    internal override void RejectPendingPredictiveState()
+    {
+        State.RejectPredictiveState();
     }
 }

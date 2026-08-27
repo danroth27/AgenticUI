@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class EmphasisNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents emphasized text.
+/// </summary>
+public class EmphasisNode : RichTextNode;

@@ -68,15 +68,10 @@ internal static class ToolBlockEmitter
                 var member = "state." + EscapeIdentifier(param.PropertyName);
                 sb.AppendLine($"                    if (args.TryGetValue(\"{EscapeString(param.ArgumentKey)}\", out var {varName}) && {varName} is not null)");
                 sb.AppendLine("                    {");
-                // Guard against malformed argument values so one bad field cannot fault the whole handler.
-                sb.AppendLine("                        try");
+                sb.AppendLine($"                        {member} = {varName} switch");
                 sb.AppendLine("                        {");
-                sb.AppendLine($"                            {member} = {varName} switch");
-                sb.AppendLine("                            {");
                 EmitDeserialization(sb, param, varName);
-                sb.AppendLine("                            };");
-                sb.AppendLine("                        }");
-                sb.AppendLine("                        catch (global::System.Exception) { }");
+                sb.AppendLine("                        };");
                 sb.AppendLine("                    }");
             }
 
@@ -122,14 +117,10 @@ internal static class ToolBlockEmitter
                 var varName = "__result";
                 var member = "state." + EscapeIdentifier(rp.PropertyName);
                 sb.AppendLine($"                var {varName} = resultContent.Result;");
-                sb.AppendLine("                try");
+                sb.AppendLine($"                {member} = {varName} switch");
                 sb.AppendLine("                {");
-                sb.AppendLine($"                    {member} = {varName} switch");
-                sb.AppendLine("                    {");
                 EmitResultDeserialization(sb, rp, varName);
-                sb.AppendLine("                    };");
-                sb.AppendLine("                }");
-                sb.AppendLine("                catch (global::System.Exception) { }");
+                sb.AppendLine("                };");
             }
             else
             {
@@ -144,14 +135,10 @@ internal static class ToolBlockEmitter
                     var member = "state." + EscapeIdentifier(rp.PropertyName);
                     sb.AppendLine($"                    if (__resultObj.TryGetProperty(\"{EscapeString(rp.ResultKey)}\", out var {varName}))");
                     sb.AppendLine("                    {");
-                    sb.AppendLine("                        try");
+                    sb.AppendLine($"                        {member} = {varName} switch");
                     sb.AppendLine("                        {");
-                    sb.AppendLine($"                            {member} = {varName} switch");
-                    sb.AppendLine("                            {");
                     EmitJsonElementDeserialization(sb, rp, varName);
-                    sb.AppendLine("                            };");
-                    sb.AppendLine("                        }");
-                    sb.AppendLine("                        catch (global::System.Exception) { }");
+                    sb.AppendLine("                        };");
                     sb.AppendLine("                    }");
                 }
 
@@ -338,6 +325,7 @@ internal static class ToolBlockEmitter
                 break;
             case ParameterTypeKind.Complex:
                 sb.AppendLine($"                        global::System.Text.Json.JsonElement __je => global::System.Text.Json.JsonSerializer.Deserialize<{prop.TypeName}>(__je)!,");
+                sb.AppendLine($"                        string __json => global::System.Text.Json.JsonSerializer.Deserialize<{prop.TypeName}>(__json)!,");
                 sb.AppendLine($"                        _ => ({prop.TypeName}){varName}!");
                 break;
         }

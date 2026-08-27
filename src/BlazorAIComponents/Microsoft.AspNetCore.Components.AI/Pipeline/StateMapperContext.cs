@@ -5,6 +5,9 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Carries a model update through typed state mapping and tracks content consumed as state.
+/// </summary>
 public class StateMapperContext
 {
     private readonly bool[] _handled;
@@ -16,8 +19,14 @@ public class StateMapperContext
         _handled = new bool[update.Contents.Count];
     }
 
+    /// <summary>
+    /// Gets the update being mapped.
+    /// </summary>
     public ChatResponseUpdate Update { get; }
 
+    /// <summary>
+    /// Gets content items that have not been consumed by the state mapper.
+    /// </summary>
     public IEnumerable<AIContent> UnhandledContents
     {
         get
@@ -33,8 +42,14 @@ public class StateMapperContext
         }
     }
 
+    /// <summary>
+    /// Marks a content item as consumed by the state mapper.
+    /// </summary>
+    /// <param name="content">The content item that was handled.</param>
     public void MarkHandled(AIContent content)
     {
+        ArgumentNullException.ThrowIfNull(content);
+
         var contents = Update.Contents;
         for (var i = 0; i < contents.Count; i++)
         {
@@ -45,16 +60,37 @@ public class StateMapperContext
                     _handled[i] = true;
                     _handledCount++;
                 }
+
                 return;
             }
         }
     }
 
-    public object? StateValue { get; private set; }
+    internal object? StateValue { get; private set; }
 
+    internal bool IsPredictiveState { get; private set; }
+
+    /// <summary>
+    /// Sets the next typed state value.
+    /// </summary>
+    /// <param name="value">The next state value.</param>
     public void SetState(object value)
     {
+        ArgumentNullException.ThrowIfNull(value);
         StateValue = value;
+        IsPredictiveState = false;
+    }
+
+    /// <summary>
+    /// Sets a provisional typed state value that must be accepted or rejected before the turn
+    /// completes.
+    /// </summary>
+    /// <param name="value">The next provisional state value.</param>
+    public void SetPredictiveState(object value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        StateValue = value;
+        IsPredictiveState = true;
     }
 
     internal bool HasHandledContent => _handledCount > 0;
@@ -83,6 +119,7 @@ public class StateMapperContext
             MessageId = Update.MessageId,
             ResponseId = Update.ResponseId,
             FinishReason = Update.FinishReason,
+            RawRepresentation = Update.RawRepresentation,
             Contents = filtered,
         };
     }

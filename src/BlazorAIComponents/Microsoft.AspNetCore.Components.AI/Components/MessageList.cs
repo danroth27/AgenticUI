@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Renders the turns of the cascaded <see cref="AgentContext"/> and updates them as blocks
+/// stream in.
+/// </summary>
 [StreamRendering]
 public class MessageList : IComponent, IDisposable
 {
@@ -17,12 +21,29 @@ public class MessageList : IComponent, IDisposable
     private IDisposable? _turnAddedSub;
     private IDisposable? _statusChangedSub;
 
+    /// <summary>
+    /// Gets or sets the conversation rendered by this list.
+    /// </summary>
     [CascadingParameter]
     public AgentContext AgentContext { get; set; } = default!;
 
+    /// <summary>
+    /// Gets or sets the content rendered above the turns. Use it to register
+    /// <see cref="BlockRenderer{TBlock}"/> components.
+    /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    /// <summary>
+    /// Gets or sets the content rendered when the conversation has no turns.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? EmptyContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the content rendered below the turns. Defaults to the streaming and error
+    /// indicators.
+    /// </summary>
     [Parameter]
     public RenderFragment<AgentContext>? Footer { get; set; }
 
@@ -87,6 +108,11 @@ public class MessageList : IComponent, IDisposable
                         inner.AddContent(4, _childContent);
                     }
 
+                    if (_turnRenderers.Count == 0 && EmptyContent is not null)
+                    {
+                        inner.AddContent(5, EmptyContent);
+                    }
+
                     var seq = 100;
                     foreach (var turnRenderer in _turnRenderers)
                     {
@@ -139,11 +165,12 @@ public class MessageList : IComponent, IDisposable
                 builder.AddContent(seq + 5, "Something went wrong. Please try again.");
                 builder.CloseElement(); // span
                 builder.OpenElement(seq + 6, "button");
-                builder.AddAttribute(seq + 7, "class", "sc-ai-btn sc-ai-btn--secondary");
-                builder.AddAttribute(seq + 8, "onclick",
+                builder.AddAttribute(seq + 7, "type", "button");
+                builder.AddAttribute(seq + 8, "class", "sc-ai-btn sc-ai-btn--secondary");
+                builder.AddAttribute(seq + 9, "onclick",
                     EventCallback.Factory.Create(this,
                         () => _agentContext.RetryAsync()));
-                builder.AddContent(seq + 9, "Retry");
+                builder.AddContent(seq + 10, "Retry");
                 builder.CloseElement(); // button
                 builder.CloseElement(); // div
                 break;
@@ -166,8 +193,12 @@ public class MessageList : IComponent, IDisposable
         _turnRenderers.Clear();
     }
 
+    /// <summary>
+    /// Removes the subscriptions this list registered on the conversation.
+    /// </summary>
     public void Dispose()
     {
         ResetRegistrations();
+        GC.SuppressFinalize(this);
     }
 }

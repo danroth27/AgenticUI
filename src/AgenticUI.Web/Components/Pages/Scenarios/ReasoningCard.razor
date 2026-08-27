@@ -1,0 +1,43 @@
+@implements IDisposable
+
+<details class="reasoning-card" open="@IsStreaming">
+    <summary>
+        <span class="reasoning-card__icon">◎</span>
+        Reasoning summary
+        @if (IsStreaming)
+        {
+            <span class="reasoning-card__status">Thinking…</span>
+        }
+    </summary>
+    @if (!string.IsNullOrEmpty(Block.Text))
+    {
+        <p>@Block.Text</p>
+    }
+    else
+    {
+        <p class="reasoning-card__protected">The model returned encrypted reasoning data.</p>
+    }
+</details>
+
+@code {
+    private ReasoningActivityBlock? _registeredBlock;
+    private IDisposable? _changedRegistration;
+
+    [Parameter, EditorRequired]
+    public ReasoningActivityBlock Block { get; set; } = default!;
+
+    private bool IsStreaming => Block.LifecycleState == BlockLifecycleState.Active;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_registeredBlock, Block))
+        {
+            _changedRegistration?.Dispose();
+            _registeredBlock = Block;
+            _changedRegistration = Block.OnChanged(
+                () => _ = InvokeAsync(StateHasChanged));
+        }
+    }
+
+    public void Dispose() => _changedRegistration?.Dispose();
+}

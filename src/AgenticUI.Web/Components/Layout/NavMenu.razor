@@ -1,56 +1,93 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">AgenticUI</a>
-    </div>
+﻿<div class="nav-brand">
+    <a class="nav-brand__link" href="">
+        <span class="nav-brand__mark" aria-hidden="true">A</span>
+        <span>
+            <strong>AgenticUI</strong>
+            <small>Blazor AG-UI Dojo</small>
+        </span>
+    </a>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="nav-icon" aria-hidden="true">⌂</span>
+                <span>
+                    <strong>Overview</strong>
+                    <small>Explore the scenarios</small>
+                </span>
             </NavLink>
         </div>
 
-        <div class="nav-item px-3 nav-heading">Scenarios</div>
+        <div class="nav-heading">Core scenarios</div>
 
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="agentic-chat">
-                <span class="bi bi-chat-dots-fill-nav-menu" aria-hidden="true"></span> Agentic chat
+                <span class="nav-icon nav-icon--lilac" aria-hidden="true">✦</span>
+                <span><strong>Agentic chat</strong><small>Streaming messages</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="backend-tools">
-                <span class="bi bi-tools-nav-menu" aria-hidden="true"></span> Backend tools
+                <span class="nav-icon nav-icon--mint" aria-hidden="true">⚙</span>
+                <span><strong>Backend tools</strong><small>Server tool rendering</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="frontend-tools">
-                <span class="bi bi-tools-nav-menu" aria-hidden="true"></span> Frontend tools
+                <span class="nav-icon nav-icon--yellow" aria-hidden="true">◆</span>
+                <span><strong>Frontend tools</strong><small>Browser actions</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="human-in-the-loop">
-                <span class="bi bi-person-check-nav-menu" aria-hidden="true"></span> Human in the loop
+                <span class="nav-icon nav-icon--orange" aria-hidden="true">✓</span>
+                <span><strong>Human in the loop</strong><small>Approval interrupts</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+
+        <div class="nav-heading">State &amp; generative UI</div>
+
+        <div class="nav-item">
             <NavLink class="nav-link" href="shared-state">
-                <span class="bi bi-arrow-repeat-nav-menu" aria-hidden="true"></span> Shared state
+                <span class="nav-icon nav-icon--mint" aria-hidden="true">↻</span>
+                <span><strong>Shared state</strong><small>Bidirectional recipe</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item">
+            <NavLink class="nav-link" href="tool-based-generative-ui">
+                <span class="nav-icon nav-icon--yellow" aria-hidden="true">◈</span>
+                <span><strong>Tool-based generative UI</strong><small>Generated haiku cards</small></span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
             <NavLink class="nav-link" href="agentic-generative-ui">
-                <span class="bi bi-list-check-nav-menu" aria-hidden="true"></span> Agentic generative UI
+                <span class="nav-icon nav-icon--lilac" aria-hidden="true">☷</span>
+                <span><strong>Agentic generative UI</strong><small>Live state deltas</small></span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item">
+            <NavLink class="nav-link" href="predictive-state-updates">
+                <span class="nav-icon nav-icon--orange" aria-hidden="true">◇</span>
+                <span><strong>Predictive state</strong><small>Accept or reject edits</small></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-heading">Advanced</div>
+
+        <div class="nav-item">
             <NavLink class="nav-link" href="reasoning">
-                <span class="bi bi-lightbulb-nav-menu" aria-hidden="true"></span> Reasoning
+                <span class="nav-icon nav-icon--yellow" aria-hidden="true">◎</span>
+                <span><strong>Reasoning</strong><small>Reasoning summaries</small></span>
             </NavLink>
         </div>
     </nav>
 </div>
 
+<div class="nav-footer">
+    <span class="nav-footer__dot"></span>
+    <span>Microsoft Foundry</span>
+</div>

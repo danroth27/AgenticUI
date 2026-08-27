@@ -1,0 +1,37 @@
+@if (!Block.HasResult)
+{
+    <div class="weather-card weather-card--loading" role="status">
+        <span>Fetching weather…</span>
+    </div>
+}
+else
+{
+    var weather = Block.Weather;
+
+    <div class="weather-card">
+        <div class="weather-card__icon">@GetConditionIcon(weather?.Conditions)</div>
+        <div class="weather-card__body">
+            <div class="weather-card__location">@Block.Location</div>
+            <div class="weather-card__temp">@weather?.Temperature°C</div>
+            <div class="weather-card__meta">
+                @weather?.Conditions · feels like @weather?.FeelsLike°C ·
+                humidity @weather?.Humidity% · wind @weather?.WindSpeed km/h
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public WeatherToolBlock Block { get; set; } = default!;
+
+    private static string GetConditionIcon(string? conditions) =>
+        conditions?.ToLowerInvariant() switch
+        {
+            "sunny" => "☀️",
+            "cloudy" => "☁️",
+            "rainy" => "🌧️",
+            "snowy" => "❄️",
+            _ => "🌤️",
+        };
+}

@@ -1,0 +1,63 @@
+@if (_hasResponded)
+{
+    <div class="confirm-changes confirm-changes--responded">
+        <span class="confirm-changes__status @(_wasAccepted
+            ? "confirm-changes__status--accepted"
+            : "confirm-changes__status--rejected")">
+            @(_wasAccepted ? "✓ Accepted" : "✗ Rejected")
+        </span>
+    </div>
+}
+else
+{
+    <div class="confirm-changes">
+        <div class="confirm-changes__header">
+            <span class="confirm-changes__eyebrow">Predictive update</span>
+            <h3>Confirm changes</h3>
+        </div>
+        <p class="confirm-changes__message">Commit these edits to the document?</p>
+        <div class="confirm-changes__actions">
+            <button class="confirm-changes__btn confirm-changes__btn--reject"
+                    disabled="@_isResponding"
+                    @onclick="RejectAsync">Reject</button>
+            <button class="confirm-changes__btn confirm-changes__btn--accept"
+                    disabled="@_isResponding"
+                    @onclick="AcceptAsync">Confirm</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public UIActionBlock Block { get; set; } = default!;
+
+    private bool _hasResponded;
+    private bool _isResponding;
+    private bool _wasAccepted;
+
+    private Task AcceptAsync() => RespondAsync(accepted: true);
+
+    private Task RejectAsync() => RespondAsync(accepted: false);
+
+    private async Task RespondAsync(bool accepted)
+    {
+        if (_hasResponded || _isResponding)
+        {
+            return;
+        }
+
+        _isResponding = true;
+        try
+        {
+            Block.Call.Arguments ??= new Dictionary<string, object?>();
+            Block.Call.Arguments["accepted"] = accepted;
+            await Block.InvokeAsync();
+            _wasAccepted = accepted;
+            _hasResponded = true;
+        }
+        finally
+        {
+            _isResponding = false;
+        }
+    }
+}

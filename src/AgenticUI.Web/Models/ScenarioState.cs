@@ -7,43 +7,43 @@ namespace AgenticUI.Web.Models;
 // ---- Shared state (recipe) ----
 
 /// <summary>Client view of the shared recipe state (matches the server's RecipeResponse shape).</summary>
-public sealed class RecipeState
+public sealed record RecipeState
 {
     [JsonPropertyName("recipe")]
-    public Recipe Recipe { get; set; } = new();
+    public Recipe Recipe { get; init; } = new();
 }
 
-public sealed class Recipe
+public sealed record Recipe
 {
     [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     [JsonPropertyName("skill_level")]
-    public string SkillLevel { get; set; } = string.Empty;
+    public string SkillLevel { get; init; } = string.Empty;
 
     [JsonPropertyName("cooking_time")]
-    public string CookingTime { get; set; } = string.Empty;
+    public string CookingTime { get; init; } = string.Empty;
 
     [JsonPropertyName("special_preferences")]
-    public List<string> SpecialPreferences { get; set; } = [];
+    public List<string> SpecialPreferences { get; init; } = [];
 
     [JsonPropertyName("ingredients")]
-    public List<Ingredient> Ingredients { get; set; } = [];
+    public List<Ingredient> Ingredients { get; init; } = [];
 
     [JsonPropertyName("instructions")]
-    public List<string> Instructions { get; set; } = [];
+    public List<string> Instructions { get; init; } = [];
 }
 
-public sealed class Ingredient
+public sealed record Ingredient
 {
     [JsonPropertyName("icon")]
-    public string Icon { get; set; } = string.Empty;
+    public string Icon { get; init; } = string.Empty;
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("amount")]
-    public string Amount { get; set; } = string.Empty;
+    public string Amount { get; init; } = string.Empty;
 }
 
 // ---- Agentic generative UI (plan) ----
@@ -62,4 +62,12 @@ public sealed class PlanStep
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "pending";
+}
+
+// ---- Predictive state (document editor) ----
+
+public sealed class DocumentState
+{
+    [JsonPropertyName("document")]
+    public string Document { get; set; } = string.Empty;
 }

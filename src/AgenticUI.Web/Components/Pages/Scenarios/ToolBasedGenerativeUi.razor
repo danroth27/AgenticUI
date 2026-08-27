@@ -1,0 +1,121 @@
+@page "/tool-based-generative-ui"
+@using System.Text.RegularExpressions
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Tool-based generative UI</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Tool-based generative UI</h1>
+        <p>
+            The model calls a browser-side <code>generate_haiku</code> tool with structured content
+            and presentation data. The Blazor app turns those arguments into a bespoke visual card
+            instead of ordinary chat text. Try: <em>"Write a haiku about a quiet summer storm."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <aside class="scenario__panel haiku-panel">
+            <HaikuCarousel Haikus="_haikus"
+                           CurrentIndex="_currentIndex"
+                           OnNavigate="NavigateToHaiku" />
+        </aside>
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask for a haiku…">
+                <MessageListContent>
+                    <BlockRenderer TBlock="UIActionBlock"
+                                   Context="action"
+                                   When="@(block => block.ToolName == "generate_haiku")">
+                        <GenerateHaikuAction Block="action" />
+                    </BlockRenderer>
+                </MessageListContent>
+            </ChatPage>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string DefaultGradient = "linear-gradient(135deg, #7775bb, #d47f63)";
+    private static readonly Regex s_safeGradientPattern = new(
+        @"\Alinear-gradient\(\s*\d{1,3}deg\s*,\s*#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\s*,\s*#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\s*\)\z",
+        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+    private List<HaikuData> _haikus = [];
+    private int _currentIndex;
+    private bool _hasGeneratedHaiku;
+
+    protected override void OnInitialized()
+    {
+        ResetHaikus();
+        _chatClient = Agents.CreateChatClient("/tool_based_generative_ui");
+        _agent = new UIAgent(_chatClient, options =>
+        {
+            options.RegisterUIAction(AIFunctionFactory.Create(
+                GenerateHaiku,
+                name: "generate_haiku",
+                description: "Generate a haiku with Japanese text, English translation, an image, and a gradient background."));
+        });
+    }
+
+    private string GenerateHaiku(
+        List<string> japanese,
+        List<string> english,
+        string gradient)
+    {
+        var haiku = new HaikuData
+        {
+            Japanese = japanese,
+            English = english,
+            Gradient = GetSafeGradient(gradient),
+        };
+        if (_hasGeneratedHaiku)
+        {
+            _haikus.Add(haiku);
+        }
+        else
+        {
+            _haikus[0] = haiku;
+            _hasGeneratedHaiku = true;
+        }
+
+        _currentIndex = _haikus.Count - 1;
+        _ = InvokeAsync(StateHasChanged);
+
+        return "Haiku displayed to user.";
+    }
+
+    private void NavigateToHaiku(int index)
+    {
+        if (index >= 0 && index < _haikus.Count)
+        {
+            _currentIndex = index;
+        }
+    }
+
+    private void ResetHaikus()
+    {
+        _haikus =
+        [
+            new HaikuData
+            {
+                Japanese = ["ここに一句", "仮のうた置く", "春を待つ"],
+                English = ["A placeholder verse—", "Resting here for now,", "Awaiting your words."],
+                Gradient = DefaultGradient,
+            },
+        ];
+        _currentIndex = 0;
+        _hasGeneratedHaiku = false;
+    }
+
+    internal static string GetSafeGradient(string gradient)
+        => s_safeGradientPattern.IsMatch(gradient) ? gradient : DefaultGradient;
+
+    public void Dispose()
+    {
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
+}

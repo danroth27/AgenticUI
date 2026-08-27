@@ -5,50 +5,56 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-internal sealed class FunctionApprovalHandler : ContentBlockHandler<FunctionApprovalHandler.ApprovalHandlerState>
+internal sealed class FunctionApprovalHandler :
+    ContentBlockHandler<FunctionApprovalHandler.State>
 {
-    public override BlockMappingResult<ApprovalHandlerState> Handle(
-        BlockMappingContext context, ApprovalHandlerState state)
+    public override BlockMappingResult<State> Handle(BlockMappingContext context, State state)
     {
-        ToolApprovalRequestContent? approvalRequest = null;
+        if (state.Emitted)
+        {
+            return BlockMappingResult<State>.Complete();
+        }
+
         foreach (var content in context.UnhandledContents)
         {
-            if (content is ToolApprovalRequestContent tar)
+            if (content is not ToolApprovalRequestContent approvalRequest)
             {
-                approvalRequest = tar;
-                break;
+                continue;
             }
+
+            context.MarkHandled(approvalRequest);
+
+            var innerBlock = context.CreateInnerBlock(approvalRequest.ToolCall)
+                ?? CreateFallbackInnerBlock(approvalRequest.ToolCall);
+
+            state.Emitted = true;
+            return BlockMappingResult<State>.Emit(
+                new FunctionApprovalBlock(innerBlock, approvalRequest)
+                {
+                    Id = approvalRequest.ToolCall is FunctionCallContent functionCall
+                        ? functionCall.CallId ?? approvalRequest.RequestId
+                        : approvalRequest.RequestId
+                },
+                state);
         }
 
-        if (approvalRequest is null)
-        {
-            return BlockMappingResult<ApprovalHandlerState>.Pass();
-        }
-
-        context.MarkHandled(approvalRequest);
-
-        // Delegate the inner FunctionCallContent to produce a typed block
-        var innerBlock = context.CreateInnerBlock(approvalRequest.ToolCall)
-            as FunctionInvocationContentBlock;
-
-        if (innerBlock is null)
-        {
-            innerBlock = new FunctionInvocationContentBlock();
-            if (approvalRequest.ToolCall is FunctionCallContent fc)
-            {
-                innerBlock.Call = fc;
-            }
-        }
-
-        var block = new FunctionApprovalBlock(innerBlock, approvalRequest);
-        block.Id = approvalRequest.ToolCall is FunctionCallContent fcc
-            ? fcc.CallId
-            : Guid.NewGuid().ToString("N");
-
-        return BlockMappingResult<ApprovalHandlerState>.Emit(block, state);
+        return BlockMappingResult<State>.Pass();
     }
 
-    internal sealed class ApprovalHandlerState
+    private static FunctionInvocationContentBlock CreateFallbackInnerBlock(
+        ToolCallContent toolCall)
     {
+        var block = new FunctionInvocationContentBlock();
+        if (toolCall is FunctionCallContent functionCall)
+        {
+            block.Call = functionCall;
+        }
+
+        return block;
+    }
+
+    internal sealed class State
+    {
+        internal bool Emitted { get; set; }
     }
 }

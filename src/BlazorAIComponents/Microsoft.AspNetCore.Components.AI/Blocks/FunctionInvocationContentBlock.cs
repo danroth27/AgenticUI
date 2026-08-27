@@ -5,31 +5,46 @@ using Microsoft.Extensions.AI;
 
 namespace Microsoft.AspNetCore.Components.AI;
 
+/// <summary>
+/// Represents a server-side function invocation and its eventual result.
+/// </summary>
 public class FunctionInvocationContentBlock : ContentBlock
 {
     private FunctionCallContent? _call;
 
+    /// <summary>
+    /// Gets or sets the function call represented by this block.
+    /// </summary>
     public FunctionCallContent? Call
     {
         get => _call;
         set
         {
             _call = value;
-            // A tool block is identified by its call. Deriving the Id here means generated
-            // handlers (which live in the consumer's assembly and cannot set the internal Id
-            // setter) don't need to assign it themselves.
-            if (value is not null && string.IsNullOrEmpty(Id))
+            if (value is not null)
             {
                 Id = value.CallId;
             }
         }
     }
 
+    /// <summary>
+    /// Gets or sets the function result paired with <see cref="Call"/>.
+    /// </summary>
     public FunctionResultContent? Result { get; set; }
 
+    /// <summary>
+    /// Gets the name of the invoked tool.
+    /// </summary>
     public string? ToolName => Call?.Name;
 
+    /// <summary>
+    /// Gets the arguments supplied to the tool.
+    /// </summary>
     public IDictionary<string, object?>? Arguments => Call?.Arguments;
 
+    /// <summary>
+    /// Gets a value indicating whether the server produced a result.
+    /// </summary>
     public bool HasResult => Result is not null;
 }

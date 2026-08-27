@@ -3,6 +3,7 @@
 
 namespace Microsoft.AspNetCore.Components.AI;
 
-public class StrongNode : RichTextNode
-{
-}
+/// <summary>
+/// Represents strongly emphasized text.
+/// </summary>
+public class StrongNode : RichTextNode;

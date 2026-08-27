@@ -1,4 +1,5 @@
 @page "/agentic-generative-ui"
+@using System.Text.Json
 @inject AgentServerConnection Agents
 @implements IDisposable
 
@@ -44,8 +45,12 @@
 </div>
 
 @code {
+    private static readonly JsonSerializerOptions s_jsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     private UIAgent<PlanState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedRegistration;
 
     protected override void OnInitialized()
     {
@@ -54,19 +59,79 @@
         {
             options.StateMapper = ctx =>
             {
-                if (AguiState.TryMap<PlanState>(ctx, () => _agent.State.Value, out var next))
+                if (ctx.Update.RawRepresentation is StateDeltaEvent delta)
                 {
-                    if (next is not null)
-                    {
-                        ctx.SetState(next);
-                    }
-                    return true;
+                    ctx.SetState(ApplyPlanDelta(_agent.State.Value, delta.Delta));
+                    return;
                 }
-                return false;
+
+                if (ctx.Update.RawRepresentation is not StateSnapshotEvent snapshot)
+                {
+                    return;
+                }
+
+                var state = snapshot.Snapshot.Deserialize<PlanState>(s_jsonOptions);
+                if (state is not null)
+                {
+                    ctx.SetState(state);
+                }
             };
         });
-        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+        _stateChangedRegistration = _agent.State.OnChanged(
+            () => _ = InvokeAsync(StateHasChanged));
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    private static PlanState ApplyPlanDelta(PlanState current, JsonElement delta)
+    {
+        var next = new PlanState
+        {
+            Steps =
+            [
+                .. current.Steps.Select(step => new PlanStep
+                {
+                    Description = step.Description,
+                    Status = step.Status,
+                }),
+            ],
+        };
+
+        foreach (var operation in delta.EnumerateArray())
+        {
+            var operationName = operation.GetProperty("op").GetString();
+            if (operationName is not "replace")
+            {
+                throw new InvalidOperationException(
+                    $"The JSON Patch operation '{operationName}' is not supported.");
+            }
+
+            var pathSegments = operation.GetProperty("path").GetString()?
+                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (pathSegments is not ["steps", var indexText, var property] ||
+                !int.TryParse(indexText, out var index) ||
+                index < 0 ||
+                index >= next.Steps.Count)
+            {
+                continue;
+            }
+
+            var value = operation.GetProperty("value").GetString() ?? string.Empty;
+            if (property == "description")
+            {
+                next.Steps[index].Description = value;
+            }
+            else if (property == "status")
+            {
+                next.Steps[index].Status = value;
+            }
+        }
+
+        return next;
+    }
+
+    public void Dispose()
+    {
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }
