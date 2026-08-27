@@ -200,6 +200,7 @@ body {
 .panel-card { width: 100%; max-width: 44rem; background: var(--app-surface);
     border: 1px solid #e7e7ee; border-radius: var(--app-radius-lg); padding: 1.75rem; box-shadow: var(--app-shadow-lg); }
 .panel-empty { color: var(--app-text-muted); font-style: italic; }
+.prototype-document pre { margin: 0; white-space: pre-wrap; font: inherit; line-height: 1.55; }
 
 /* Section headings inside artifact cards, with the accent underline the artifacts share. */
 .panel-card h2 { margin: 0 0 1rem; font-size: 1.4rem; font-weight: 600; }

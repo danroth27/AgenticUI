@@ -81,7 +81,7 @@
 
     protected override void OnInitialized()
     {
-        _chatClient = Agents.CreateChatClient("/predictive_state_updates");
+        _chatClient = Agents.CreateChatClient("/predictive_state_direct");
         Reset();
     }
 
@@ -101,13 +101,6 @@
                         _agent.State.Value,
                         s_jsonOptions),
                 },
-                Tools =
-                [
-                    AIFunctionFactory.Create(
-                        WriteDocument,
-                        name: "write_document_local",
-                        description: "Write the full document in Markdown format."),
-                ],
             };
             options.StateMapper = context =>
             {
@@ -134,8 +127,6 @@
                 description: "Confirm the document changes with the user."));
         }, LoggerFactory, initialState);
     }
-
-    private static string WriteDocument(string document) => "Document written.";
 
     private string ConfirmChanges(bool accepted = true)
     {

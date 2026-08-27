@@ -1,0 +1,82 @@
+@page "/predictive-state-prototype/{Strategy}"
+@using System.Text.Json
+@inject AgentServerConnection Agents
+@implements IDisposable
+
+<PageTitle>Predictive state prototype</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Predictive state prototype: @Strategy</h1>
+        <p>
+            Compares model-paced state dispatch around <code>FunctionInvokingChatClient</code>.
+            Try: <em>"Write a detailed guide to building a backyard birdhouse."</em>
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <aside class="scenario__panel">
+            <article class="panel-card prototype-document">
+                @if (string.IsNullOrEmpty(_agent.State.Value.Document))
+                {
+                    <div class="panel-empty">The document will appear here as tool arguments stream.</div>
+                }
+                else
+                {
+                    <pre>@_agent.State.Value.Document</pre>
+                }
+            </article>
+        </aside>
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Ask for a document…" />
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions s_jsonOptions =
+        new(JsonSerializerDefaults.Web);
+
+    private UIAgent<DocumentState> _agent = default!;
+    private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedRegistration;
+
+    [Parameter]
+    public string Strategy { get; set; } = "direct";
+
+    protected override void OnInitialized()
+    {
+        var endpoint = Strategy switch
+        {
+            "channel" => "/predictive_state_channel",
+            "informational" => "/predictive_state_informational",
+            _ => "/predictive_state_direct",
+        };
+        _chatClient = Agents.CreateChatClient(endpoint);
+        _agent = new UIAgent<DocumentState>(_chatClient, options =>
+        {
+            options.StateMapper = context =>
+            {
+                if (context.Update.RawRepresentation is not StateSnapshotEvent snapshot)
+                {
+                    return;
+                }
+
+                var state = snapshot.Snapshot.Deserialize<DocumentState>(s_jsonOptions);
+                if (state is not null)
+                {
+                    context.SetState(state);
+                }
+            };
+        });
+        _stateChangedRegistration = _agent.State.OnChanged(
+            () => _ = InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose()
+    {
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
+}

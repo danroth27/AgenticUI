@@ -27,6 +27,8 @@ var chatClient = Foundry.CreateChatClient(foundry);
 var reasoningChatClient = Foundry.CreateReasoningChatClient(foundry);
 var jsonOptions = app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
 var agents = new AgentCatalog(chatClient, reasoningChatClient);
+var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+var prototypeModelClient = chatClient.AsIChatClient();
 
 // Map one AG-UI endpoint per scenario. Each is an HTTP POST that streams AG-UI events (SSE).
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
@@ -43,8 +45,17 @@ app.MapAGUIServer("/shared_state", agents.CreateSharedState())
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 app.MapPredictiveStateEndpoint(
     "/predictive_state_updates",
-    chatClient.AsIChatClient(),
+    prototypeModelClient,
     jsonOptions);
+app.MapAGUIServer(
+    "/predictive_state_direct",
+    PredictiveStatePrototypes.CreateDirect(prototypeModelClient, jsonOptions, loggerFactory));
+app.MapAGUIServer(
+    "/predictive_state_channel",
+    PredictiveStatePrototypes.CreateChannel(prototypeModelClient, jsonOptions, loggerFactory));
+app.MapAGUIServer(
+    "/predictive_state_informational",
+    PredictiveStatePrototypes.CreateInformational(prototypeModelClient, jsonOptions, loggerFactory));
 
 app.MapGet("/", () => Results.Ok(new
 {
