@@ -17,7 +17,7 @@ wires the two together, and everything runs on **[Microsoft Foundry](https://lea
 | **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Predictive state updates** | Stream proposed state, then accept or reject it | `/predictive_state_updates` |
-| **Reasoning** | A reasoning model's chain of thought via `REASONING_*` events | `/reasoning` |
+| **Reasoning** | A reasoning model's reasoning summary via `REASONING_*` events | `/reasoning` |
 
 ## Architecture
 

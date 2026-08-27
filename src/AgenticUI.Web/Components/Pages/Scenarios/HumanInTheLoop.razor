@@ -79,7 +79,11 @@
         _agent = new UIAgent(_chatClient);
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 
     private static string Humanize(string name) =>
         string.IsNullOrEmpty(name)

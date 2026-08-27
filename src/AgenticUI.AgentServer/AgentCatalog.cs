@@ -162,12 +162,12 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
         });
     }
 
-    /// <summary>Reasoning — surfaces a reasoning model's chain of thought separately from its answer.</summary>
+    /// <summary>Reasoning — surfaces a reasoning model's reasoning summary separately from its answer.</summary>
     public AIAgent CreateReasoning() =>
         this._reasoningChatClient.AsAIAgent(new ChatClientAgentOptions
         {
             Name = "ReasoningAgent",
-            Description = "A reasoning model that shows its thinking.",
+            Description = "A reasoning model that returns a reasoning summary.",
             ChatOptions = new ChatOptions
             {
                 // Keep the answer plain: the Blazor AI components render text, not markdown. Avoid
@@ -238,4 +238,3 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
     private static string TransferFunds(string toAccount, decimal amount) =>
         $"Transferred {amount:C} to account {toAccount}.";
 }
-

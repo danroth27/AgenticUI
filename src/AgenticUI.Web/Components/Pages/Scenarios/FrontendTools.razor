@@ -56,5 +56,9 @@
         _agent = new UIAgent(_chatClient, options => options.RegisterUIAction(setAccentColor));
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }
