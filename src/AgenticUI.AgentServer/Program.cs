@@ -32,6 +32,7 @@ var agents = new AgentCatalog(chatClient, reasoningChatClient);
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
 app.MapAGUIServer("/backend_tool_rendering", agents.CreateBackendToolRendering());
 app.MapAGUIServer("/human_in_the_loop", agents.CreateHumanInTheLoop());
+app.MapAGUIServer("/frontend_tools", agents.CreateFrontendTools());
 app.MapAGUIServer("/tool_based_generative_ui", agents.CreateToolBasedGenerativeUI());
 app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
     .WithMetadata(new AGUIStreamOptions()
@@ -44,8 +45,6 @@ app.MapPredictiveStateEndpoint(
     "/predictive_state_updates",
     chatClient.AsIChatClient(),
     jsonOptions);
-app.MapAGUIServer("/workflow", agents.CreateWorkflow());
-app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -57,13 +56,12 @@ app.MapGet("/", () => Results.Ok(new
         "/agentic_chat",
         "/backend_tool_rendering",
         "/human_in_the_loop",
+        "/frontend_tools",
         "/tool_based_generative_ui",
         "/agentic_generative_ui",
         "/shared_state",
         "/reasoning",
-        "/predictive_state_updates",
-        "/workflow",
-        "/selective_approval"
+        "/predictive_state_updates"
     }
 }));
 

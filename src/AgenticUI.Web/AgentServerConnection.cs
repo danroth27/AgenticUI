@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using AGUI.Client;
+using AgenticUI.Web.Formatting;
 using Microsoft.Extensions.AI;
 
 namespace AgenticUI.Web;
@@ -18,6 +19,7 @@ public sealed class AgentServerConnection(IHttpClientFactory httpClientFactory)
     public IChatClient CreateChatClient(string endpoint)
     {
         HttpClient http = httpClientFactory.CreateClient("agentserver");
-        return new AGUIChatClient(new AGUIChatClientOptions(http, endpoint));
+        var aguiClient = new AGUIChatClient(new AGUIChatClientOptions(http, endpoint));
+        return new FormattedChatClient(aguiClient);
     }
 }

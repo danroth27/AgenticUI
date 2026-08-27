@@ -13,6 +13,9 @@
          src/BlazorAIComponents/.../NOTICE.md). Swap for the official
          Microsoft.AspNetCore.Components.AI NuGet package once it ships. -->
     <ProjectReference Include="..\BlazorAIComponents\Microsoft.AspNetCore.Components.AI\Microsoft.AspNetCore.Components.AI.csproj" />
+    <ProjectReference Include="..\BlazorAIComponents\Microsoft.AspNetCore.Components.AI.SourceGenerators\Microsoft.AspNetCore.Components.AI.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

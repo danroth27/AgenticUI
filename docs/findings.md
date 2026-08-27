@@ -39,7 +39,7 @@ The remaining gaps are mostly at the boundary between the AG-UI event stream and
 | Medium | Components.AI is undergoing breaking API churn | Pin and vendor an exact upstream snapshot | Keep migration notes with each snapshot and avoid treating current APIs as stable |
 | Low | The legacy AG-UI MAF example still uses removed APIs | Use the newer SDK sample instead | Update or remove the legacy example tracked by ag-ui-protocol/ag-ui#2237 |
 | Low | `WithInMemorySessionStore()` defaults to isolated sessions without requiring a key provider at compile time | Pass `withIsolation: false` for a single-user sample | Improve the getting-started default or fail during startup with a clearer configuration error |
-| Low | Workflows exposed as agents omit workflow-level AG-UI events | Consume agent text and tool events only | Add step, activity, and workflow interrupt event mapping in microsoft/agent-framework#2494 |
+| Low | Workflows exposed as agents omit workflow-level AG-UI events | Keep the investigation-only workflow out of the focused sample | Add step, activity, and workflow interrupt event mapping in microsoft/agent-framework#2494 |
 
 ### 1. Predictive state is currently synthetic
 
@@ -101,7 +101,7 @@ options.ChatOptions = new ChatOptions
 
 **Recommended Components.AI action:** add an outbound state callback next to `StateMapper`, so applications do not need to construct protocol-specific `RunAgentInput` values.
 
-Transporting state does not automatically make it model context. The predictive endpoint must also include the current document in the system prompt so the model knows what it is editing. This is expected separation between protocol state and chat messages, but samples should make it explicit.
+Transporting state does not automatically make it model context. AgenticUI's shared-state scenario wraps its MAF agent with a thin `RecipeStateAgent` that reads `RunAgentInput.State` and adds the current recipe to the model context; the predictive endpoint similarly includes the current document in its system prompt. This is expected separation between protocol state and chat messages, but samples should make it explicit.
 
 ### 5. Components.AI snapshot upgrades require migration work
 
@@ -145,7 +145,7 @@ WithInMemorySessionStore(withIsolation: false)
 
 ### 8. Workflow agents do not emit workflow-level AG-UI events
 
-A workflow converted with `AgentWorkflowBuilder.BuildSequential(...).AsAIAgent()` and mapped with `MapAGUIServer()` streams each constituent agent's text and tool events. It does not emit workflow step, activity, or workflow-level interrupt events.
+A workflow converted with `AgentWorkflowBuilder.BuildSequential(...).AsAIAgent()` and mapped with `MapAGUIServer()` streams each constituent agent's text and tool events. It does not emit workflow step, activity, or workflow-level interrupt events. AgenticUI no longer exposes its investigation-only workflow endpoint, keeping the application focused on the visible Dojo scenarios.
 
 This is tracked by [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494).
 
@@ -219,10 +219,12 @@ The current AgenticUI implementation has exercised:
 - Agentic chat
 - Backend tool rendering
 - Frontend tools
+- Tool-based generative UI
 - Human-in-the-loop approval and rejection
-- Shared state
+- Bidirectional shared state
 - Agentic generative UI
 - Predictive state acceptance, rejection, rollback, and subsequent edits
 - Reasoning summaries
+- Progressively rendered Markdown
 
 The application behavior is functional. The predictive-state timing caveat in finding #1 remains the primary fidelity gap relative to genuine model-paced updates.

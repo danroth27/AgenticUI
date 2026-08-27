@@ -41,7 +41,7 @@
 
     protected override void OnInitialized()
     {
-        _chatClient = Agents.CreateChatClient("/tool_based_generative_ui");
+        _chatClient = Agents.CreateChatClient("/frontend_tools");
 
         var setAccentColor = AIFunctionFactory.Create(
             (string color) =>

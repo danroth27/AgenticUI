@@ -12,9 +12,10 @@ wires the two together, and everything runs on **[Microsoft Foundry](https://lea
 | --- | --- | --- |
 | **Agentic chat** | Streaming, multi-turn chat (`TEXT_MESSAGE_*`) | `/agentic_chat` |
 | **Backend tools** | Server-side tool calls (`TOOL_CALL_*`) rendered as a custom card | `/backend_tool_rendering` |
-| **Frontend tools** | Client-side tool executed in the browser | `/tool_based_generative_ui` |
+| **Frontend tools** | Client-side tool executed in the browser | `/frontend_tools` |
+| **Tool-based generative UI** | Client tool arguments rendered as visual haiku cards | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
-| **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
+| **Shared state** | Bidirectional recipe state edited by the user and agent | `/shared_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Predictive state updates** | Stream proposed state, then accept or reject it | `/predictive_state_updates` |
 | **Reasoning** | A reasoning model's reasoning summary via `REASONING_*` events | `/reasoning` |
@@ -38,9 +39,9 @@ flowchart LR
   to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by Microsoft Foundry via
   `Microsoft.Agents.AI.OpenAI`.
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an
-  `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a
-  standard `IChatClient`. UI is rendered with the Blazor AI components (`ChatPage`, `MessageList`,
-  `BlockRenderer`, `UIAgent<TState>`, …).
+  `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), wrapped by the Dojo formatting pipeline
+  so streamed Markdown becomes `RichTextContent`. UI is rendered with the Blazor AI components
+  (`ChatPage`, `MessageList`, `BlockRenderer`, `UIAgent<TState>`, …).
 - **`AgenticUI.AppHost` / `AgenticUI.ServiceDefaults`** — Aspire orchestration and service discovery.
 
 ### Released packages used
