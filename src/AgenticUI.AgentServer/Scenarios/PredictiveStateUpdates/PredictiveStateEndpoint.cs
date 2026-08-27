@@ -20,6 +20,8 @@ internal static class PredictiveStateEndpoint
 
         IMPORTANT:
         - Use the `write_document_local` tool with the full document text in Markdown format
+        - If the user asks to clear the document, call the tool with an empty document string;
+          do not substitute a notice, placeholder, or explanation
         - Format the document extensively so it is easy to read
         - You can use headings, lists, bold text, and other Markdown
         - Do not use italic or strike-through formatting
