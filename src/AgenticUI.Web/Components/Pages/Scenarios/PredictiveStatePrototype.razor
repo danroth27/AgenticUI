@@ -50,6 +50,18 @@
         {
             "channel" => "/predictive_state_channel",
             "informational" => "/predictive_state_informational",
+            "direct-responses" => "/predictive_state_direct_responses",
+            "direct-multiple" => "/predictive_state_direct_multiple",
+            "channel-multiple" => "/predictive_state_channel_multiple",
+            "informational-multiple" => "/predictive_state_informational_multiple",
+            "direct-early" => "/predictive_state_direct_early",
+            "channel-early" => "/predictive_state_channel_early",
+            "direct-parallel" => "/predictive_state_direct_parallel",
+            "channel-parallel" => "/predictive_state_channel_parallel",
+            "direct-mixed" => "/predictive_state_direct_mixed",
+            "direct-unicode" => "/predictive_state_direct_unicode",
+            "direct-approval" => "/predictive_state_direct_approval",
+            "channel-approval" => "/predictive_state_channel_approval",
             _ => "/predictive_state_direct",
         };
         _chatClient = Agents.CreateChatClient(endpoint);

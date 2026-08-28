@@ -1,159 +1,161 @@
 # Predictive state streaming prototypes
 
-This document evaluates application-level workarounds for streaming predictive document state
-through Microsoft Agent Framework (MAF), Microsoft.Extensions.AI (MEAI), and AG-UI.
+This document evaluates application-level approaches for predictive document state through
+Microsoft Agent Framework (MAF), Microsoft.Extensions.AI (MEAI), and AG-UI.
 
-## Goals
+## Conclusions
 
-- Show document state while the model is still producing `write_document_local` arguments.
-- Preserve `FunctionInvokingChatClient` tool execution and conversation history.
-- Keep predictive state as an application pattern built from tool updates and UI events.
-- Use the result to propose a general MEAI improvement rather than a predictive-state-specific API.
+- The OpenAI Chat Completions adapter exposes argument fragments through
+  `ChatResponseUpdate.RawRepresentation` before it emits the completed `FunctionCallContent`.
+- A delegating agent can convert those fragments into predictive state without a channel.
+- Javier's channel approach solves a different problem: publishing UI events from inside a
+  function while `FunctionInvokingChatClient` is executing it.
+- Completed-call interception cannot provide model-paced predictive state.
+- AG-UI 0.0.5 already provides the protocol-level
+  `AGUIToolCallArgumentFragment` and `MapStreamingToolCallArguments(...)` primitives.
+- The long-term gap is a provider-neutral MEAI representation of streamed function arguments.
 
-## Pipeline observation
-
-`FunctionInvokingChatClient` does not buffer every provider update. Updates without a completed
-`FunctionCallContent` are yielded immediately. When the completed call appears, FICC buffers from
-that point until it can resolve server-handled call/result pairs and approval behavior.
-
-OpenAI argument fragments reach callers before the completed call, but only through
-`ChatResponseUpdate.RawRepresentation` as `StreamingChatCompletionUpdate.ToolCallUpdates`.
-MEAI has no provider-neutral content type for those fragments.
+## Architectures evaluated
 
 ```mermaid
-flowchart LR
-    Model[Foundry model] --> Raw[Provider argument fragments]
-    Raw --> FICC[FunctionInvokingChatClient]
-    FICC -->|pre-call updates pass through| Agent[ChatClientAgent]
-    FICC -->|completed call and later updates buffered| Invoke[Tool invocation loop]
-    Agent --> Wrapper[Predictive delegating agent]
-    Wrapper --> State[AG-UI state snapshots]
+flowchart TB
+    Provider[Provider stream]
+    FICC[FunctionInvokingChatClient]
+    Agent[ChatClientAgent]
+    Direct[Direct predictive agent]
+    Function[Invoked AIFunction]
+    Channel[Per-run channel]
+    UI[AG-UI state events]
+
+    Provider -->|argument fragments| FICC
+    FICC --> Agent
+    Agent --> Direct
+    Direct -->|argument-progress state| UI
+
+    FICC -->|completed call| Function
+    Function -->|invocation-progress state| Channel
+    Channel --> UI
 ```
 
-## Prototypes
+### Direct argument-progress agent
 
-### Direct delegating agent
+The delegating agent observes the nested provider update carried by
+`AgentResponseUpdate.RawRepresentation`, incrementally decodes the `document` argument, and adds
+an immediately following application `DataContent` update. `AGUIStreamOptions.MapContent(...)` maps
+that data to `StateSnapshotEvent`. The provider update is not mutated, so the stream-only state
+content cannot leak into FICC's retained updates or reconstructed history.
 
-The delegating agent inspects the inner `AgentResponseUpdate.RawRepresentation`, extracts nested
-OpenAI argument fragments, incrementally decodes the `document` string, and emits
-`StateSnapshotEvent` updates before yielding the original agent update.
+The endpoint also registers `MapStreamingToolCallArguments(...)`. This gives AG-UI ownership of
+`TOOL_CALL_START`, incremental `TOOL_CALL_ARGS`, and `TOOL_CALL_END`, including closing an open text
+or reasoning lane before starting the tool call. The application state snapshot follows the
+corresponding tool-argument event.
 
-This preserves one ordered async stream. Backpressure and cancellation flow through the existing
-`IAsyncEnumerable` pipeline without additional coordination.
+### Invocation channel
 
-### Delegating agent with channel
+The delegating agent creates a bounded channel per run. The `write_document_local` function closes
+over the channel writer and publishes state when FICC invokes the function. A concurrent pump writes
+normal inner-agent output to the same channel.
 
-A `DelegatingChatClient` below FICC extracts the same fragments and writes state updates to a
-bounded per-run channel. A delegating agent pumps normal inner-agent output into the same channel
-and yields the merged stream.
+The channel now uses linked cancellation and awaits the pump from a `finally` block, so a client
+disconnect does not leave a producer blocked on a full channel.
 
-This validates the workaround proposed in the Dan:Javier sync. It is useful when updates cannot be
-observed above FICC or when an out-of-band producer must continue while the normal agent stream is
-buffered.
+This is the likely meaning of the workaround discussed in the Dan:Javier sync: a function can
+publish a UI event while FICC is still inside its invocation loop. It does not expose partial
+arguments before the function is invoked.
 
 ### Completed-call informational mapping
 
-The delegating agent ignores raw fragments and emits state only when the completed
-`FunctionCallContent` appears. This represents interception that lacks access to streamed argument
-updates.
+This control ignores provider fragments and maps only completed `FunctionCallContent`. It can
+produce one state update per complete tool call, but it cannot show a document while its arguments
+are being generated.
 
-## Results
+## Foundry observations
 
-The prototypes used the same Foundry deployment and prompt. Model generation is nondeterministic,
-so timing is directional rather than a benchmark.
+Foundry-backed runs are useful for visual confirmation but not for benchmarking because response
+length and provider chunking vary.
 
-| Strategy | First state | Final state | State events | Outcome |
-| --- | ---: | ---: | ---: | --- |
-| Direct delegating agent | 3-5 seconds | 12-13 seconds | About 150 | Progressively updated; full accept continuation passed |
-| Channel | About 3 seconds | About 11 seconds | 153 | Progressively updated; cancellation passed |
-| Completed-call informational | 11.5 seconds | 11.5 seconds | 1 | No predictive progression |
+- The direct Chat Completions path began rendering several seconds before the completed call.
+- The full predictive editor preserved manually entered state, streamed changes, paused for
+  confirmation, committed acceptance, and resumed through the inner agent and FICC.
+- The invocation-channel path produced a state update only when its function executed. With one
+  complete document call, this is not visually progressive.
+- The OpenAI Responses adapter produced only the completed-call state in this prototype. The
+  Chat-Completions-specific raw extractor did not generalize to Responses.
 
-The direct and channel variants exposed the same provider fragments with no meaningful latency
-difference. The channel added a pump, an `AsyncLocal` writer scope, completion coordination, and a
-second backpressure boundary without improving the observed result.
+## Deterministic harness results
 
-The direct prototype also ran through the existing predictive-state UI: the document updated while
-arguments streamed, a token from the manually edited starting document was preserved by the model,
-the confirmation action paused the run, acceptance committed the prediction, and the confirmation
-result resumed through the inner agent and FICC before the model acknowledged the decision.
+The in-app deterministic client forces stream shapes that Foundry cannot reliably produce.
 
-## Current recommendation
+| Case | Direct argument progress | Invocation channel | Finding |
+| --- | --- | --- | --- |
+| Two sequential calls across FICC iterations | Passed; second document replaced first | Passed | Track calls by identity and reset indexes between turns |
+| Two parallel calls in one turn | Both calls correlated and balanced | Both functions executed | Parallel writes to one scalar state have ambiguous last-writer semantics |
+| Fragmented emoji and non-ASCII text | Passed | Not applicable | Decoder must retain incomplete escapes and surrogate pairs between fragments |
+| Assistant text followed by a tool call | Passed with valid event ordering | Not applicable | AG-UI's streaming argument hook correctly closes the text lane |
+| Completed call followed by more provider updates | Client failed | Client failed | FICC can expose an invalid downstream sequence if an adapter emits an FCC before later content |
+| Approval-required write | State visible before approval | State visible only after approval and execution | Direct is argument progress; channel is invocation progress |
+| Client disconnect | Natural iterator cancellation | Passed after lifecycle hardening | Channel implementations require explicit producer cleanup |
+| Responses API | Completed state only | Not evaluated | Provider parity requires an abstraction above provider raw types |
 
-Use the direct delegating-agent approach in the sample for now:
+### Early completed-call failure
 
-1. Inspect nested provider raw updates before the completed call.
-2. Convert the growing `document` argument into throttled state snapshots.
-3. Yield those snapshots immediately before the corresponding normal agent update.
-4. Emit a final authoritative snapshot from the completed call.
-5. Preserve the existing confirmation action and balanced continuation.
+The forced early-call stream produced this ordering:
 
-Keep the channel implementation as a documented fallback, not the default. It becomes justified if
-another provider or pipeline layer stops forwarding pre-call updates, or if state originates from a
-truly independent asynchronous producer.
-
-The sample workaround remains provider-specific because it must recognize OpenAI SDK update types.
-It should also coalesce updates by time and always emit the final state to avoid quadratic full-state
-payload growth.
-
-## MEAI proposal
-
-### Problem
-
-Provider adapters can receive incremental tool-call arguments, but MEAI exposes them only through
-provider-specific `RawRepresentation` values. Consumers that need tool progress must depend on a
-provider SDK and reconstruct call identity, ordering, and partial arguments themselves.
-
-FICC's buffering of completed calls is intentional and should remain. It is required to detect
-server-handled call/result pairs and preserve approval semantics. The missing capability is a typed,
-provider-neutral representation of the argument updates that occur before completion.
-
-### Proposed API direction
-
-Add a streaming content type similar to:
-
-```csharp
-public sealed class FunctionCallArgumentsDeltaContent : AIContent
-{
-    public int Index { get; init; }
-    public string? CallId { get; init; }
-    public string? Name { get; init; }
-    public string ArgumentsDelta { get; init; } = string.Empty;
-}
+```text
+TOOL_CALL_START
+TOOL_CALL_ARGS
+STATE_SNAPSHOT
+TOOL_CALL_END
+TEXT_MESSAGE_START
+TEXT_MESSAGE_CONTENT
+TOOL_CALL_RESULT
+TEXT_MESSAGE_END
 ```
 
-Provider adapters would emit this content as argument fragments arrive. `CallId` and `Name` may be
-present only on the first fragment; `Index` correlates later fragments within the model turn.
+The tool result appears while a text message is open. The AG-UI client rejects the sequence. The
+current OpenAI Chat Completions adapter normally avoids this because it synthesizes the completed
+`FunctionCallContent` only after the provider stream ends, but this is not a general FICC guarantee.
 
-`FunctionInvokingChatClient` would:
+### Approval and streamed arguments
 
-- Yield delta content immediately.
-- Continue accumulating the arguments internally.
-- Emit the existing completed `FunctionCallContent`.
-- Retain its current buffering and invocation behavior for completed calls, results, and approvals.
+Combining `MapStreamingToolCallArguments(...)` with FICC approval rewriting produced a second
+`TOOL_CALL_START` for the same call when the completed call became a `ToolApprovalRequestContent`.
+The approval tests therefore disable the streaming argument hook to isolate FICC behavior.
 
-### Why this is preferable
+This needs coordination in AG-UI: a call already opened by streamed fragments must be closed and
+converted to an approval interrupt without emitting a duplicate lifecycle.
 
-- Provider-specific extraction is implemented once in each provider adapter.
-- Agent and UI frameworks can observe tool progress without referencing OpenAI types.
-- Existing FICC correctness guarantees remain intact.
-- AG-UI can map the typed deltas directly to `TOOL_CALL_ARGS`.
-- Applications remain responsible for composing predictive state or other UI behavior from general
-  tool updates.
+## Recommendation for AgenticUI
 
-### Acceptance criteria
+Use the direct argument-progress approach for the current Foundry Chat Completions sample:
 
-- Argument deltas are observable before the completed `FunctionCallContent`.
-- Multiple and parallel calls can be correlated reliably.
-- Escaped strings and fragmented Unicode round-trip correctly.
-- FICC still produces one completed call and one result per invocation.
-- Approval-required and server-handled tools retain current behavior.
-- Cancellation terminates both provider streaming and invocation processing.
-- Providers that do not support argument streaming remain compatible.
+1. Register an OpenAI extractor with `MapStreamingToolCallArguments(...)`.
+2. Incrementally decode the `document` argument in a delegating agent.
+3. Emit a separate mapped application state update immediately after the corresponding provider
+   update.
+4. Throttle intermediate state and always emit the completed call's authoritative value.
+5. Preserve the existing confirmation and state-aware continuation behavior.
+6. Prevent or define parallel writes to the same scalar state.
 
-## Open design questions
+Do not use the channel for this specific scenario. A channel is appropriate when state comes from
+function execution or another independent producer, but it does not make a single function's
+arguments visible before approval or invocation.
 
-- Whether the delta should be a string, `BinaryData`, or a new value type.
-- Whether call lifecycle needs explicit start/end content in addition to deltas.
-- Whether FICC or provider adapters own accumulation into the completed call.
-- How typed deltas interact with service-managed conversation history.
-- Whether a generic invocation-progress callback is useful after typed content is available.
+The workaround remains provider-specific and should stay on the prototype branch until Javier has
+reviewed it. The existing completed-call implementation in PR #2 remains the simpler portable
+fallback.
+
+## Remaining application concerns
+
+- Intermediate full snapshots still have cumulative quadratic payload growth. A production version
+  should use bounded update frequency and preferably state deltas.
+- Raw provider types are not guaranteed to survive caching, replay, persistence, or remote agent
+  boundaries.
+- The current streaming JSON decoder is deliberately specialized for one string property.
+- Parallel calls that update the same document require an explicit conflict policy.
+- The sample must define whether predictive state is allowed before approval for consequential
+  tools. The document-editing case is safe because the state is provisional until separately
+  confirmed.
+
+The corresponding framework proposal is in
+[`meai-streaming-function-arguments.md`](meai-streaming-function-arguments.md).

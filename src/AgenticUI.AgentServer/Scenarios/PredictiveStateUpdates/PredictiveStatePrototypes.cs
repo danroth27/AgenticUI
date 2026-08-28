@@ -18,6 +18,8 @@ namespace AgenticUI.AgentServer.Scenarios.PredictiveStateUpdates;
 internal static class PredictiveStatePrototypes
 {
     private const string ToolName = "write_document_local";
+    internal const string PredictiveStateMediaType =
+        "application/vnd.agenticui.predictive-state+json";
     private const string Instructions = """
         You are a document editor. For every request to create or edit a document, call
         write_document_local exactly once with the complete Markdown document. Keep the document
@@ -28,43 +30,48 @@ internal static class PredictiveStatePrototypes
     internal static AIAgent CreateDirect(
         IChatClient modelClient,
         JsonSerializerOptions jsonOptions,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        bool requireApproval = false,
+        bool emitConfirmation = true)
     {
         var innerAgent = CreateInnerAgent(modelClient, loggerFactory);
         return new DirectPredictiveStateAgent(
             innerAgent,
-            CreateWriteDocumentTool(),
+            CreateWriteDocumentTool(requireApproval),
             jsonOptions,
-            loggerFactory.CreateLogger<DirectPredictiveStateAgent>());
+            loggerFactory.CreateLogger<DirectPredictiveStateAgent>(),
+            emitConfirmation);
     }
 
     internal static AIAgent CreateChannel(
         IChatClient modelClient,
         JsonSerializerOptions jsonOptions,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        bool requireApproval = false,
+        bool emitConfirmation = true)
     {
-        var capturingClient = new ChannelCapturingChatClient(
-            modelClient,
-            jsonOptions,
-            loggerFactory.CreateLogger<ChannelCapturingChatClient>());
-        var innerAgent = CreateInnerAgent(capturingClient, loggerFactory);
+        var innerAgent = CreateInnerAgent(modelClient, loggerFactory);
         return new ChannelPredictiveStateAgent(
             innerAgent,
-            CreateWriteDocumentTool(),
-            loggerFactory.CreateLogger<ChannelPredictiveStateAgent>());
+            jsonOptions,
+            loggerFactory.CreateLogger<ChannelPredictiveStateAgent>(),
+            requireApproval,
+            emitConfirmation);
     }
 
     internal static AIAgent CreateInformational(
         IChatClient modelClient,
         JsonSerializerOptions jsonOptions,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        bool emitConfirmation = true)
     {
         var innerAgent = CreateInnerAgent(modelClient, loggerFactory);
         return new InformationalPredictiveStateAgent(
             innerAgent,
             CreateWriteDocumentTool(),
             jsonOptions,
-            loggerFactory.CreateLogger<InformationalPredictiveStateAgent>());
+            loggerFactory.CreateLogger<InformationalPredictiveStateAgent>(),
+            emitConfirmation);
     }
 
     private static AIAgent CreateInnerAgent(
@@ -84,11 +91,64 @@ internal static class PredictiveStatePrototypes
             loggerFactory);
     }
 
-    private static AITool CreateWriteDocumentTool() =>
-        AIFunctionFactory.Create(
+    internal static AGUIStreamOptions CreateStreamOptions(
+        bool includeStreamingArgumentMapping = true)
+    {
+        var options = new AGUIStreamOptions();
+        options.MapContent(content => content is DataContent data &&
+            data.MediaType == PredictiveStateMediaType
+                ? [new StateSnapshotEvent
+                {
+                    Snapshot = JsonSerializer.Deserialize<JsonElement>(data.Data.Span),
+                }]
+                : null);
+        if (!includeStreamingArgumentMapping)
+        {
+            return options;
+        }
+
+        options.MapStreamingToolCallArguments(update =>
+        {
+            if (update.RawRepresentation is StreamingChatCompletionUpdate openAIUpdate)
+            {
+                return openAIUpdate.ToolCallUpdates.Select(toolUpdate =>
+                    new AGUIToolCallArgumentFragment
+                    {
+                        Index = toolUpdate.Index,
+                        ToolCallId = toolUpdate.ToolCallId,
+                        FunctionName = toolUpdate.FunctionName,
+                        ArgumentsDelta = toolUpdate.FunctionArgumentsUpdate.ToString(),
+                    });
+            }
+
+            if (update.RawRepresentation is PrototypeToolCallArgumentUpdate prototypeUpdate)
+            {
+                return
+                [
+                    new AGUIToolCallArgumentFragment
+                    {
+                        Index = prototypeUpdate.Index,
+                        ToolCallId = prototypeUpdate.CallId,
+                        FunctionName = prototypeUpdate.Name,
+                        ArgumentsDelta = prototypeUpdate.Delta,
+                    },
+                ];
+            }
+
+            return null;
+        });
+
+        return options;
+    }
+
+    private static AITool CreateWriteDocumentTool(bool requireApproval = false)
+    {
+        var tool = AIFunctionFactory.Create(
             WriteDocument,
             name: ToolName,
             description: "Write the complete Markdown document.");
+        return requireApproval ? new ApprovalRequiredAIFunction(tool) : tool;
+    }
 
     [Description("Write a complete Markdown document.")]
     private static string WriteDocument(
@@ -100,7 +160,8 @@ internal sealed class DirectPredictiveStateAgent(
     AIAgent innerAgent,
     AITool writeDocumentTool,
     JsonSerializerOptions jsonOptions,
-    ILogger<DirectPredictiveStateAgent> logger)
+    ILogger<DirectPredictiveStateAgent> logger,
+    bool emitConfirmation)
     : DelegatingAIAgent(innerAgent)
 {
     protected override Task<AgentResponse> RunCoreAsync(
@@ -135,18 +196,20 @@ internal sealed class DirectPredictiveStateAgent(
             preparedOptions,
             cancellationToken).ConfigureAwait(false))
         {
+            IReadOnlyList<DataContent> stateContents = [];
             if (update.RawRepresentation is ChatResponseUpdate chatUpdate)
             {
-                foreach (var stateUpdate in tracker.Process(chatUpdate, includeFragments: true))
-                {
-                    yield return stateUpdate;
-                }
+                stateContents = tracker.Process(chatUpdate, includeFragments: true).ToArray();
             }
 
             yield return update;
+            foreach (var stateContent in stateContents)
+            {
+                yield return PredictiveStateUpdate.CreateUpdate(stateContent);
+            }
         }
 
-        if (!confirmationCompleted)
+        if (emitConfirmation && !confirmationCompleted)
         {
             var callId = Guid.NewGuid().ToString("N");
             yield return new AgentResponseUpdate
@@ -169,7 +232,8 @@ internal sealed class InformationalPredictiveStateAgent(
     AIAgent innerAgent,
     AITool writeDocumentTool,
     JsonSerializerOptions jsonOptions,
-    ILogger<InformationalPredictiveStateAgent> logger)
+    ILogger<InformationalPredictiveStateAgent> logger,
+    bool emitConfirmation)
     : DelegatingAIAgent(innerAgent)
 {
     protected override Task<AgentResponse> RunCoreAsync(
@@ -201,23 +265,32 @@ internal sealed class InformationalPredictiveStateAgent(
             preparedOptions,
             cancellationToken).ConfigureAwait(false))
         {
+            IReadOnlyList<DataContent> stateContents = [];
             if (update.RawRepresentation is ChatResponseUpdate chatUpdate)
             {
-                foreach (var stateUpdate in tracker.Process(chatUpdate, includeFragments: false))
-                {
-                    yield return stateUpdate;
-                }
+                stateContents = tracker.Process(chatUpdate, includeFragments: false).ToArray();
             }
 
             yield return update;
+            foreach (var stateContent in stateContents)
+            {
+                yield return PredictiveStateUpdate.CreateUpdate(stateContent);
+            }
+        }
+
+        if (emitConfirmation)
+        {
+            yield return PredictivePrototypeRun.CreateConfirmationUpdate();
         }
     }
 }
 
 internal sealed class ChannelPredictiveStateAgent(
     AIAgent innerAgent,
-    AITool writeDocumentTool,
-    ILogger<ChannelPredictiveStateAgent> logger)
+    JsonSerializerOptions jsonOptions,
+    ILogger<ChannelPredictiveStateAgent> logger,
+    bool requireApproval,
+    bool emitConfirmation)
     : DelegatingAIAgent(innerAgent)
 {
     protected override Task<AgentResponse> RunCoreAsync(
@@ -234,6 +307,8 @@ internal sealed class ChannelPredictiveStateAgent(
         AgentRunOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var messageList = messages as IReadOnlyList<ChatMessage> ?? messages.ToList();
+        var confirmationCompleted = PredictivePrototypeRun.HasConfirmationResult(messageList);
         var channel = Channel.CreateBounded<AgentResponseUpdate>(
             new BoundedChannelOptions(32)
             {
@@ -242,26 +317,60 @@ internal sealed class ChannelPredictiveStateAgent(
                 SingleWriter = false,
             });
 
-        using var scope = PredictiveStateChannel.Begin(channel.Writer);
+        using var runCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
+        async Task<string> WriteDocumentAsync(string document)
+        {
+            logger.LogInformation(
+                "Predictive prototype channel emitted invocation state at {ElapsedMilliseconds} ms ({Length} chars).",
+                stopwatch.ElapsedMilliseconds,
+                document.Length);
+            await channel.Writer.WriteAsync(
+                PredictiveStateUpdate.CreateUpdate(document, jsonOptions),
+                runCancellation.Token).ConfigureAwait(false);
+            return "Document written.";
+        }
+
+        var writeDocumentFunction = AIFunctionFactory.Create(
+            WriteDocumentAsync,
+            name: "write_document_local",
+            description: "Write the complete Markdown document.");
+        AITool writeDocumentTool = requireApproval
+            ? new ApprovalRequiredAIFunction(writeDocumentFunction)
+            : writeDocumentFunction;
         var pump = PumpInnerAgentAsync(
             channel.Writer,
             PredictivePrototypeRun.PrepareMessages(
-                messages,
+                messageList,
                 options,
-                confirmationCompleted: false),
+                confirmationCompleted),
             session,
             PredictivePrototypeRun.PrepareOptions(
                 options,
                 writeDocumentTool,
-                enableTools: true),
-            cancellationToken);
+                enableTools: !confirmationCompleted),
+            emitConfirmation && !confirmationCompleted,
+            runCancellation.Token);
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            yield return update;
+            await foreach (var update in channel.Reader.ReadAllAsync(runCancellation.Token).ConfigureAwait(false))
+            {
+                yield return update;
+            }
         }
-
-        await pump.ConfigureAwait(false);
+        finally
+        {
+            runCancellation.Cancel();
+            channel.Writer.TryComplete();
+            try
+            {
+                await pump.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (runCancellation.IsCancellationRequested)
+            {
+            }
+        }
     }
 
     private async Task PumpInnerAgentAsync(
@@ -269,6 +378,7 @@ internal sealed class ChannelPredictiveStateAgent(
         IEnumerable<ChatMessage> messages,
         AgentSession? session,
         AgentRunOptions? options,
+        bool addConfirmation,
         CancellationToken cancellationToken)
     {
         try
@@ -282,6 +392,17 @@ internal sealed class ChannelPredictiveStateAgent(
                 await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
             }
 
+            if (addConfirmation)
+            {
+                await writer.WriteAsync(
+                    PredictivePrototypeRun.CreateConfirmationUpdate(),
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            writer.TryComplete();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
             writer.TryComplete();
         }
         catch (Exception exception)
@@ -350,59 +471,37 @@ internal static class PredictivePrototypeRun
             }
             : new ChatClientAgentRunOptions { ChatOptions = new ChatOptions() };
 
-        preparedOptions.ChatOptions!.Tools = enableTools
-            ? [writeDocumentTool]
-            : [];
+        if (!enableTools)
+        {
+            preparedOptions.ChatOptions!.Tools = [];
+            return preparedOptions;
+        }
+
+        var tools = preparedOptions.ChatOptions!.Tools is null
+            ? []
+            : preparedOptions.ChatOptions.Tools
+                .Where(tool => tool.Name != writeDocumentTool.Name)
+                .ToList();
+        tools.Add(writeDocumentTool);
+        preparedOptions.ChatOptions.Tools = tools;
         return preparedOptions;
     }
-}
 
-internal sealed class ChannelCapturingChatClient(
-    IChatClient innerClient,
-    JsonSerializerOptions jsonOptions,
-    ILogger<ChannelCapturingChatClient> logger)
-    : DelegatingChatClient(innerClient)
-{
-    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages,
-        ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    internal static AgentResponseUpdate CreateConfirmationUpdate()
     {
-        var tracker = new StreamingDocumentTracker("channel", jsonOptions, logger);
-        await foreach (var update in base.GetStreamingResponseAsync(
-            messages,
-            options,
-            cancellationToken).ConfigureAwait(false))
+        var callId = Guid.NewGuid().ToString("N");
+        return new AgentResponseUpdate
         {
-            if (PredictiveStateChannel.Current is { } writer)
-            {
-                foreach (var stateUpdate in tracker.Process(update, includeFragments: true))
-                {
-                    await writer.WriteAsync(stateUpdate, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            yield return update;
-        }
-    }
-}
-
-internal static class PredictiveStateChannel
-{
-    private static readonly AsyncLocal<ChannelWriter<AgentResponseUpdate>?> s_current = new();
-
-    internal static ChannelWriter<AgentResponseUpdate>? Current => s_current.Value;
-
-    internal static IDisposable Begin(ChannelWriter<AgentResponseUpdate> writer)
-    {
-        var previous = s_current.Value;
-        s_current.Value = writer;
-        return new Scope(previous);
-    }
-
-    private sealed class Scope(ChannelWriter<AgentResponseUpdate>? previous) : IDisposable
-    {
-        public void Dispose() => s_current.Value = previous;
+            MessageId = Guid.NewGuid().ToString("N"),
+            Role = ChatRole.Assistant,
+            Contents =
+            [
+                new FunctionCallContent(
+                    callId,
+                    "confirm_changes",
+                    new Dictionary<string, object?>()),
+            ],
+        };
     }
 }
 
@@ -412,12 +511,12 @@ internal sealed class StreamingDocumentTracker(
     ILogger logger)
 {
     private const string ToolName = "write_document_local";
-    private readonly Dictionary<int, StreamingDocumentArguments> _calls = [];
+    private readonly Dictionary<int, TrackedToolCall> _calls = [];
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private string? _lastEmittedDocument;
     private long _lastEmitMilliseconds;
 
-    internal IEnumerable<AgentResponseUpdate> Process(
+    internal IEnumerable<DataContent> Process(
         ChatResponseUpdate update,
         bool includeFragments)
     {
@@ -426,28 +525,26 @@ internal sealed class StreamingDocumentTracker(
         {
             foreach (var toolUpdate in streamingUpdate.ToolCallUpdates)
             {
-                if (!_calls.TryGetValue(toolUpdate.Index, out var call))
+                foreach (var stateUpdate in ProcessFragment(
+                    toolUpdate.Index,
+                    toolUpdate.ToolCallId,
+                    toolUpdate.FunctionName,
+                    toolUpdate.FunctionArgumentsUpdate.ToString()))
                 {
-                    if (toolUpdate.FunctionName != ToolName)
-                    {
-                        continue;
-                    }
-
-                    call = new StreamingDocumentArguments();
-                    _calls.Add(toolUpdate.Index, call);
+                    yield return stateUpdate;
                 }
-
-                var fragment = toolUpdate.FunctionArgumentsUpdate.ToString();
-                if (fragment.Length == 0)
-                {
-                    continue;
-                }
-
-                var document = call.Append(fragment, out var isComplete);
-                if (document is not null && ShouldEmit(document, isComplete))
-                {
-                    yield return CreateStateUpdate(document, "fragment");
-                }
+            }
+        }
+        else if (includeFragments &&
+            update.RawRepresentation is PrototypeToolCallArgumentUpdate prototypeUpdate)
+        {
+            foreach (var stateUpdate in ProcessFragment(
+                prototypeUpdate.Index,
+                prototypeUpdate.CallId,
+                prototypeUpdate.Name,
+                prototypeUpdate.Delta))
+            {
+                yield return stateUpdate;
             }
         }
 
@@ -465,6 +562,43 @@ internal sealed class StreamingDocumentTracker(
         }
     }
 
+    private IEnumerable<DataContent> ProcessFragment(
+        int index,
+        string? callId,
+        string? name,
+        string fragment)
+    {
+        if (!string.IsNullOrEmpty(name))
+        {
+            if (name != ToolName)
+            {
+                _calls.Remove(index);
+                yield break;
+            }
+
+            _calls[index] = new TrackedToolCall(
+                callId ?? $"index:{index}",
+                new StreamingDocumentArguments());
+        }
+
+        if (!_calls.TryGetValue(index, out var call) || fragment.Length == 0)
+        {
+            yield break;
+        }
+
+        if (!string.IsNullOrEmpty(callId) && call.CallId != callId)
+        {
+            call = new TrackedToolCall(callId, new StreamingDocumentArguments());
+            _calls[index] = call;
+        }
+
+        var document = call.Arguments.Append(fragment, out var isComplete);
+        if (document is not null && ShouldEmit(document, isComplete))
+        {
+            yield return CreateStateUpdate(document, "fragment");
+        }
+    }
+
     private bool ShouldEmit(string document, bool isComplete)
     {
         if (document == _lastEmittedDocument)
@@ -479,7 +613,7 @@ internal sealed class StreamingDocumentTracker(
             elapsedMilliseconds - _lastEmitMilliseconds >= 75;
     }
 
-    private AgentResponseUpdate CreateStateUpdate(string document, string source)
+    private DataContent CreateStateUpdate(string document, string source)
     {
         _lastEmittedDocument = document;
         _lastEmitMilliseconds = _stopwatch.ElapsedMilliseconds;
@@ -490,124 +624,194 @@ internal sealed class StreamingDocumentTracker(
             _lastEmitMilliseconds,
             document.Length);
 
-        var snapshot = JsonSerializer.SerializeToElement(
-            new DocumentState { Document = document },
-            jsonOptions);
-        return new AgentResponseUpdate
-        {
-            Role = ChatRole.Assistant,
-            RawRepresentation = new ChatResponseUpdate
-            {
-                Role = ChatRole.Assistant,
-                RawRepresentation = new StateSnapshotEvent { Snapshot = snapshot },
-            },
-        };
+        return PredictiveStateUpdate.CreateContent(document, jsonOptions);
     }
+
+    private sealed record TrackedToolCall(
+        string CallId,
+        StreamingDocumentArguments Arguments);
 }
 
 internal sealed class StreamingDocumentArguments
 {
     private readonly StringBuilder _arguments = new();
+    private readonly StringBuilder _document = new();
+    private int _position;
+    private int _valueStart = -1;
+    private bool _complete;
 
     internal string? Append(string fragment, out bool isComplete)
     {
         _arguments.Append(fragment);
-        return TryReadDocument(_arguments.ToString(), out isComplete);
+        if (_valueStart < 0)
+        {
+            var markerIndex = _arguments.ToString().IndexOf("\"document\"", StringComparison.Ordinal);
+            if (markerIndex < 0)
+            {
+                isComplete = false;
+                return null;
+            }
+
+            _position = markerIndex + "\"document\"".Length;
+            if (!TryFindValueStart())
+            {
+                isComplete = false;
+                return null;
+            }
+        }
+
+        ReadAvailableValue();
+        isComplete = _complete;
+        return _document.ToString();
     }
 
-    private static string? TryReadDocument(string arguments, out bool isComplete)
+    private bool TryFindValueStart()
     {
-        isComplete = false;
-        var propertyIndex = arguments.IndexOf("\"document\"", StringComparison.Ordinal);
-        if (propertyIndex < 0)
+        while (_position < _arguments.Length && char.IsWhiteSpace(_arguments[_position]))
         {
-            return null;
+            _position++;
+        }
+        if (_position >= _arguments.Length || _arguments[_position] != ':')
+        {
+            return false;
         }
 
-        var position = propertyIndex + "\"document\"".Length;
-        while (position < arguments.Length && char.IsWhiteSpace(arguments[position]))
+        _position++;
+        while (_position < _arguments.Length && char.IsWhiteSpace(_arguments[_position]))
         {
-            position++;
+            _position++;
         }
-        if (position >= arguments.Length || arguments[position] != ':')
+        if (_position >= _arguments.Length || _arguments[_position] != '"')
         {
-            return null;
-        }
-
-        position++;
-        while (position < arguments.Length && char.IsWhiteSpace(arguments[position]))
-        {
-            position++;
-        }
-        if (position >= arguments.Length || arguments[position] != '"')
-        {
-            return null;
+            return false;
         }
 
-        position++;
-        var document = new StringBuilder();
-        while (position < arguments.Length)
+        _position++;
+        _valueStart = _position;
+        return true;
+    }
+
+    private void ReadAvailableValue()
+    {
+        while (!_complete && _position < _arguments.Length)
         {
-            var character = arguments[position++];
+            var character = _arguments[_position++];
             if (character == '"')
             {
-                isComplete = true;
-                return document.ToString();
+                _complete = true;
+                return;
             }
 
             if (character != '\\')
             {
-                document.Append(character);
+                _document.Append(character);
                 continue;
             }
 
-            if (position >= arguments.Length)
+            var escapeStart = _position - 1;
+            if (_position >= _arguments.Length)
             {
-                return document.ToString();
+                _position = escapeStart;
+                return;
             }
 
-            var escape = arguments[position++];
+            var escape = _arguments[_position++];
             switch (escape)
             {
                 case '"':
                 case '\\':
                 case '/':
-                    document.Append(escape);
+                    _document.Append(escape);
                     break;
                 case 'b':
-                    document.Append('\b');
+                    _document.Append('\b');
                     break;
                 case 'f':
-                    document.Append('\f');
+                    _document.Append('\f');
                     break;
                 case 'n':
-                    document.Append('\n');
+                    _document.Append('\n');
                     break;
                 case 'r':
-                    document.Append('\r');
+                    _document.Append('\r');
                     break;
                 case 't':
-                    document.Append('\t');
+                    _document.Append('\t');
                     break;
                 case 'u':
-                    if (position + 4 > arguments.Length ||
+                    if (_position + 4 > _arguments.Length ||
                         !int.TryParse(
-                            arguments.AsSpan(position, 4),
+                            _arguments.ToString().AsSpan(_position, 4),
                             System.Globalization.NumberStyles.HexNumber,
                             System.Globalization.CultureInfo.InvariantCulture,
                             out var codePoint))
                     {
-                        return document.ToString();
+                        _position = escapeStart;
+                        return;
                     }
 
-                    document.Append((char)codePoint);
-                    position += 4;
+                    var characterValue = (char)codePoint;
+                    if (char.IsHighSurrogate(characterValue))
+                    {
+                        if (_position + 10 > _arguments.Length ||
+                            _arguments[_position + 4] != '\\' ||
+                            _arguments[_position + 5] != 'u' ||
+                            !int.TryParse(
+                                _arguments.ToString().AsSpan(_position + 6, 4),
+                                System.Globalization.NumberStyles.HexNumber,
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                out var lowCodePoint) ||
+                            !char.IsLowSurrogate((char)lowCodePoint))
+                        {
+                            _position = escapeStart;
+                            return;
+                        }
+
+                        _document.Append(characterValue);
+                        _document.Append((char)lowCodePoint);
+                        _position += 10;
+                    }
+                    else
+                    {
+                        _document.Append(characterValue);
+                        _position += 4;
+                    }
                     break;
                 default:
-                    return document.ToString();
+                    _position = escapeStart;
+                    return;
             }
         }
-
-        return document.ToString();
     }
 }
+
+internal static class PredictiveStateUpdate
+{
+    internal static DataContent CreateContent(
+        string document,
+        JsonSerializerOptions jsonOptions)
+    {
+        var data = JsonSerializer.SerializeToUtf8Bytes(
+            new DocumentState { Document = document },
+            jsonOptions);
+        return new DataContent(data, PredictiveStatePrototypes.PredictiveStateMediaType);
+    }
+
+    internal static AgentResponseUpdate CreateUpdate(
+        string document,
+        JsonSerializerOptions jsonOptions) =>
+        CreateUpdate(CreateContent(document, jsonOptions));
+
+    internal static AgentResponseUpdate CreateUpdate(DataContent content) =>
+        new()
+        {
+            Role = ChatRole.Assistant,
+            Contents = [content],
+        };
+}
+
+internal sealed record PrototypeToolCallArgumentUpdate(
+    int Index,
+    string? CallId,
+    string? Name,
+    string Delta);

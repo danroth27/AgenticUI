@@ -5,6 +5,7 @@ using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Extensions.AI;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,13 +50,88 @@ app.MapPredictiveStateEndpoint(
     jsonOptions);
 app.MapAGUIServer(
     "/predictive_state_direct",
-    PredictiveStatePrototypes.CreateDirect(prototypeModelClient, jsonOptions, loggerFactory));
+    PredictiveStatePrototypes.CreateDirect(prototypeModelClient, jsonOptions, loggerFactory))
+    .WithMetadata(PredictiveStatePrototypes.CreateStreamOptions());
 app.MapAGUIServer(
     "/predictive_state_channel",
-    PredictiveStatePrototypes.CreateChannel(prototypeModelClient, jsonOptions, loggerFactory));
+    PredictiveStatePrototypes.CreateChannel(prototypeModelClient, jsonOptions, loggerFactory))
+    .WithMetadata(PredictiveStatePrototypes.CreateStreamOptions());
 app.MapAGUIServer(
     "/predictive_state_informational",
-    PredictiveStatePrototypes.CreateInformational(prototypeModelClient, jsonOptions, loggerFactory));
+    PredictiveStatePrototypes.CreateInformational(prototypeModelClient, jsonOptions, loggerFactory))
+    .WithMetadata(PredictiveStatePrototypes.CreateStreamOptions());
+app.MapAGUIServer(
+    "/predictive_state_direct_responses",
+    PredictiveStatePrototypes.CreateDirect(reasoningChatClient, jsonOptions, loggerFactory))
+    .WithMetadata(PredictiveStatePrototypes.CreateStreamOptions());
+
+MapDeterministicPrototype(
+    "/predictive_state_direct_multiple",
+    DeterministicPredictiveScenario.MultipleTurns,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_channel_multiple",
+    DeterministicPredictiveScenario.MultipleTurns,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateChannel(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_informational_multiple",
+    DeterministicPredictiveScenario.MultipleTurns,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateInformational(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_direct_early",
+    DeterministicPredictiveScenario.EarlyCompletedCall,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_channel_early",
+    DeterministicPredictiveScenario.EarlyCompletedCall,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateChannel(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_direct_parallel",
+    DeterministicPredictiveScenario.ParallelCalls,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_channel_parallel",
+    DeterministicPredictiveScenario.ParallelCalls,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateChannel(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_direct_mixed",
+    DeterministicPredictiveScenario.MixedText,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_direct_unicode",
+    DeterministicPredictiveScenario.Unicode,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(client, options, factory, emitConfirmation: false));
+MapDeterministicPrototype(
+    "/predictive_state_direct_approval",
+    DeterministicPredictiveScenario.Approval,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateDirect(
+            client,
+            options,
+            factory,
+            requireApproval: true,
+            emitConfirmation: false),
+    useStreamingArgumentMapping: false);
+MapDeterministicPrototype(
+    "/predictive_state_channel_approval",
+    DeterministicPredictiveScenario.Approval,
+    (client, options, factory) =>
+        PredictiveStatePrototypes.CreateChannel(
+            client,
+            options,
+            factory,
+            requireApproval: true,
+            emitConfirmation: false),
+    useStreamingArgumentMapping: false);
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -77,3 +153,16 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.Run();
+
+void MapDeterministicPrototype(
+    string pattern,
+    DeterministicPredictiveScenario scenario,
+    Func<IChatClient, JsonSerializerOptions, ILoggerFactory, Microsoft.Agents.AI.AIAgent> createAgent,
+    bool useStreamingArgumentMapping = true)
+{
+    var client = new DeterministicPredictiveChatClient(
+        scenario,
+        loggerFactory.CreateLogger<DeterministicPredictiveChatClient>());
+    app.MapAGUIServer(pattern, createAgent(client, jsonOptions, loggerFactory))
+        .WithMetadata(PredictiveStatePrototypes.CreateStreamOptions(useStreamingArgumentMapping));
+}
