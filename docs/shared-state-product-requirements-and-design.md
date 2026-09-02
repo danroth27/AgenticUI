@@ -270,6 +270,25 @@ agent.UseClientState<RecipeState>(
 The helper should require an explicit projection. It must not automatically expose internal session
 state.
 
+Hide the endpoint-metadata implementation used to associate `AGUIStreamOptions` with
+`MapAGUIServer`. The current documentation tells developers to call the general ASP.NET Core
+`WithMetadata` method without explaining that the AG-UI handler later retrieves that specific
+metadata type.
+
+Provide a feature-specific endpoint extension instead:
+
+```csharp
+app.MapAGUIServer("/shared_state", agent)
+    .WithAGUIStreamOptions(options =>
+        options.MapResultAsStateSnapshot("generate_recipe"));
+```
+
+`WithAGUIStreamOptions` should create one endpoint-scoped `AGUIStreamOptions` instance, attach it as
+metadata, and return the same endpoint-builder type for fluent chaining. This makes the supported
+configuration path discoverable while leaving `WithMetadata` as the low-level mechanism. Because
+endpoint metadata is created at startup and reused, the API documentation should also warn against
+capturing per-run mutable state in mapping callbacks.
+
 ### AG-UI .NET
 
 Improve typed result mapping so a POCO tool result can become a snapshot without first being
