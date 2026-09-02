@@ -258,17 +258,26 @@ protocol construction from the page.
 
 ### MAF AG-UI hosting
 
-Provide an optional helper for validated state projection into model context:
+Remove the need for an application-authored `DelegatingAIAgent`. `MapAGUIServer` already receives
+the originating `RunAgentInput`, so the endpoint should provide an explicit typed projection from
+client state into model context:
 
 ```csharp
-agent.UseClientState<RecipeState>(
-    state => new ChatMessage(
-        ChatRole.User,
-        $"Current recipe JSON:\n{JsonSerializer.Serialize(state)}"));
+app.MapAGUIServer("/shared_state", agent)
+    .WithClientStateContext<RecipeState>(
+        state => new ChatMessage(
+            ChatRole.User,
+            $"Current recipe JSON:\n{JsonSerializer.Serialize(state)}"));
 ```
 
-The helper should require an explicit projection. It must not automatically expose internal session
-state.
+The hosting layer should deserialize `RunAgentInput.State`, invoke the callback only when state is
+present and valid, and add the resulting message or `AIContext` for that run before invoking the
+agent. The callback keeps prompt framing explicit while removing `TryGetRunAgentInput`,
+`ChatClientAgentRunOptions` inspection, and a custom wrapper type from application code.
+
+The helper must not automatically expose `AgentSession.StateBag` or infer that all request state
+belongs in the prompt. Client state is untrusted input, so deserialization errors and application
+validation failures should be surfaced rather than silently ignored.
 
 Hide the endpoint-metadata implementation used to associate `AGUIStreamOptions` with
 `MapAGUIServer`. The current documentation tells developers to call the general ASP.NET Core
