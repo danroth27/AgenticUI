@@ -181,6 +181,23 @@ app.MapAGUIServer("/shared_state", agent)
             .MapResultAsStateSnapshot("generate_recipe"));
 ```
 
+For an incremental committed update, a tool can instead return an RFC 6902 JSON Patch as a
+`JsonElement`:
+
+```csharp
+app.MapAGUIServer("/planning", agent)
+    .WithAGUIStreamOptions(options =>
+        options
+            .MapResultAsStateSnapshot("create_plan")
+            .MapResultAsStateDelta("update_plan_step"));
+```
+
+`MapResultAsStateDelta` emits the tool result as `STATE_DELTA` after the normal
+`TOOL_CALL_RESULT`. It does not calculate a diff or validate patch paths. The tool owns producing a
+valid JSON Patch array, and the client owns applying operations in order or rejecting the update.
+A common pattern is to establish state with a snapshot and use deltas only for later targeted
+changes.
+
 ### Current .NET developer responsibilities
 
 - Define matching client and server state models.
@@ -189,7 +206,7 @@ app.MapAGUIServer("/shared_state", agent)
 - Recover state in a delegating agent and apply application validation.
 - Decide how state enters model context.
 - Configure selected tool results as snapshots or deltas.
-- Deserialize and apply incoming state.
+- Deserialize snapshots and correctly apply incoming RFC 6902 deltas.
 - Implement persistence and conflict behavior.
 
 The approach is explicit and flexible, but outbound state and model-context projection require
@@ -212,13 +229,18 @@ shared state does not automatically produce `STATE_DELTA`.
 | Receive current state | Integration-owned | `RunAgentInput.State` factory |
 | Add state to model context | Integration-owned | Delegating agent |
 | Commit a tool result | Tool returns `state_update(...)` | Endpoint maps the tool result |
-| Emit committed state | Automatic snapshot after `state_update` | Explicit `AGUIStreamOptions` snapshot or delta |
+| Emit committed state | Automatic snapshot after `state_update` | Explicit `MapResultAsStateSnapshot` or `MapResultAsStateDelta` |
 | Apply state on client | Client state handling | `UIAgent<TState>.StateMapper` |
 | Persistence and conflicts | Application-owned | Application-owned |
 
 Predictive configuration is additional to ordinary shared state. `predict_state_config` declares
 which streamed tool argument should become provisional state; it is not required merely to exchange
 committed state.
+
+Python's ordinary `state_update(...)` path emits a complete snapshot. Its automatic
+`STATE_DELTA` support belongs to predictive state, where each partial argument replaces a mapped
+state key. .NET uniquely exposes an explicit ordinary committed-delta mapping, although the
+application must author the JSON Patch itself.
 
 Python also has an optional thread snapshot-store abstraction. Its in-memory implementation is a
 development-oriented whole-record, last-writer-wins cache with no optimistic concurrency.
