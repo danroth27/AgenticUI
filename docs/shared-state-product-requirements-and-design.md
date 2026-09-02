@@ -142,6 +142,7 @@ options.ChatOptions = new ChatOptions
 {
     RawRepresentationFactory = _ => new RunAgentInput
     {
+        ThreadId = _threadId,
         State = JsonSerializer.SerializeToElement(_agent.State.Value),
     },
 };
@@ -186,8 +187,8 @@ For an incremental committed update, a tool can instead return an RFC 6902 JSON 
 
 ```csharp
 app.MapAGUIServer("/planning", agent)
-    .WithAGUIStreamOptions(options =>
-        options
+    .WithMetadata(
+        new AGUIStreamOptions()
             .MapResultAsStateSnapshot("create_plan")
             .MapResultAsStateDelta("update_plan_step"));
 ```
@@ -198,19 +199,9 @@ valid JSON Patch array, and the client owns applying operations in order or reje
 A common pattern is to establish state with a snapshot and use deltas only for later targeted
 changes.
 
-### Current .NET developer responsibilities
-
-- Define matching client and server state models.
-- Update typed state for local edits.
-- Construct protocol-specific `RunAgentInput` through `RawRepresentationFactory`.
-- Recover state in a delegating agent and apply application validation.
-- Decide how state enters model context.
-- Configure selected tool results as snapshots or deltas.
-- Deserialize snapshots and correctly apply incoming RFC 6902 deltas.
-- Implement persistence and conflict behavior.
-
-The approach is explicit and flexible, but outbound state and model-context projection require
-boilerplate that is easy to omit.
+The approach is explicit and flexible, but developers must currently write protocol request
+construction, model-context projection, snapshot and delta handling, validation, persistence, and
+conflict behavior themselves.
 
 ## Python development experience
 
@@ -267,74 +258,165 @@ constraints.
 
 ## Opportunities to improve .NET
 
-### Components.AI
+The target design should preserve these ownership boundaries:
 
-Add a symmetric outbound-state callback to `UIAgent<TState>`:
+| Layer | Responsibility |
+| --- | --- |
+| MEAI | Provider-neutral messages, tools, results, and streaming content |
+| AG-UI .NET | Protocol state transport and protocol-level state tracking |
+| MAF AG-UI hosting | HTTP handling, agent invocation, sessions, and endpoint configuration |
+| Components.AI | Typed UI state, local edits, observation, restore, and predictive state |
+| Components.AI/AG-UI integration | Typed state conversion to and from AG-UI requests and events |
+| Application | State schema, authorization, persistence, revisions, and conflict policy |
 
-```csharp
-options.StateProvider = () => _agent.State.Value;
-```
+### P0: Fix correctness defects
 
-The AG-UI client integration could serialize that value into `RunAgentInput.State`, removing direct
-protocol construction from the page.
+MAF hosting should save a hosted `AgentSession` from a `finally` block when an SSE client disconnects
+or cancels, without using the already-cancelled request token. Otherwise the client can receive tool
+and state events while the corresponding server session mutations are lost.
 
-### MAF AG-UI hosting
+AG-UI .NET should:
 
-Remove the need for an application-authored `DelegatingAIAgent`. `MapAGUIServer` already receives
-the originating `RunAgentInput`, so the endpoint should provide an explicit typed projection from
-client state into model context:
+- Validate that `STATE_DELTA` is an array consistently across JSON and protobuf.
+- Use the already-resolved tool name when mapping results on continuation turns. The current lookup
+  can silently omit a configured state event after an approval continuation.
+- Handle unset `JsonElement` values without throwing during protocol conversion.
+- Leave committed state unchanged when a snapshot cannot be deserialized or a delta cannot be
+  applied.
+- Log mapper and conversion exceptions server-side while keeping sanitized `RUN_ERROR` messages on
+  the wire.
 
-```csharp
-app.MapAGUIServer("/shared_state", agent)
-    .WithClientStateContext<RecipeState>(
-        state => new ChatMessage(
-            ChatRole.User,
-            $"Current recipe JSON:\n{JsonSerializer.Serialize(state)}"));
-```
+### P1: Close the protocol-level client state loop
 
-The hosting layer should deserialize `RunAgentInput.State`, invoke the callback only when state is
-present and valid, and add the resulting message or `AIContext` for that run before invoking the
-agent. The callback keeps prompt framing explicit while removing `TryGetRunAgentInput`,
-`ChatClientAgentRunOptions` inspection, and a custom wrapper type from application code.
-
-The helper must not automatically expose `AgentSession.StateBag` or infer that all request state
-belongs in the prompt. Client state is untrusted input, so deserialization errors and application
-validation failures should be surfaced rather than silently ignored.
-
-Hide the endpoint-metadata implementation used to associate `AGUIStreamOptions` with
-`MapAGUIServer`. The current documentation tells developers to call the general ASP.NET Core
-`WithMetadata` method without explaining that the AG-UI handler later retrieves that specific
-metadata type.
-
-Provide a feature-specific endpoint extension instead:
+`AGUI.Client` should provide one supported implementation for applying snapshots and RFC 6902 deltas.
+A possible shape is:
 
 ```csharp
-app.MapAGUIServer("/shared_state", agent)
-    .WithAGUIStreamOptions(options =>
-        options.MapResultAsStateSnapshot("generate_recipe"));
+public sealed class AGUIStateTracker
+{
+    public JsonNode? State { get; }
+
+    public AGUIStateApplyResult Apply(ChatResponseUpdate update);
+}
 ```
 
-`WithAGUIStreamOptions` should create one endpoint-scoped `AGUIStreamOptions` instance, attach it as
-metadata, and return the same endpoint-builder type for fluent chaining. This makes the supported
-configuration path discoverable while leaving `WithMetadata` as the low-level mechanism. Because
-endpoint metadata is created at startup and reused, the API documentation should also warn against
-capturing per-run mutable state in mapping callbacks.
+One tracker would be scoped to one thread. Updates should be applied to a copy and committed
+atomically so a malformed patch cannot partially corrupt the previous state. Request construction
+should remain with the caller, which assigns the tracked value to `RunAgentInput.State`.
 
-### AG-UI .NET
+State events should also be represented as serializable `AIContent` on
+`ChatResponseUpdate.Contents`, not only as provider objects in `RawRepresentation`. Durable content
+allows conversation restore to recover state and gives typed clients a normal content-mapping path.
+This is more important to shared state than changing `ChatResponseUpdate.ToChatResponse`
+aggregation semantics.
 
-Improve typed result mapping so a POCO tool result can become a snapshot without first being
-manually converted to `JsonElement`:
+The trim-safe client path should apply patches over `JsonNode`. Server-side patch authoring can reuse
+`Microsoft.AspNetCore.JsonPatch.SystemTextJson` where its target frameworks and reflection behavior
+are acceptable rather than introducing a competing JSON Patch model.
+
+### P1: Make Components.AI state symmetric and typed
+
+`UIAgent<TState>` receives typed state but has no corresponding outbound-state API. The committed
+`AgentState<TState>.Value` should be the single source of truth sent by default, never an unconfirmed
+prediction. An optional projection or redaction callback can produce the client-visible form.
+
+Extend the existing options and constructor surface without hiding the current non-generic
+`StateMapper`. Add a generic mapping context, `JsonTypeInfo<TState>`, default snapshot handling, and
+helpers for applying committed and predictive deltas. A separate Components.AI/AG-UI integration can
+translate the committed value to `RunAgentInput.State` and map durable AG-UI state content back to
+typed state, removing protocol casts from Razor pages.
+
+Persist committed typed state independently of `RawRepresentation`. Restoring a serialized
+conversation currently cannot reconstruct state from provider objects and can reset state to
+`new TState()`. The persistence contract should either store state with the conversation thread or
+use an application state store keyed by the stable AG-UI `ThreadId`.
+
+### P1: Remove the application-authored `DelegatingAIAgent`
+
+State injection is invocation context, so the preferred long-term MAF extension point is
+`AIContextProvider`. MAF already has an `AgentRunContext` containing the run options when it invokes
+providers, but `AIContextProvider.InvokingContext` does not expose it. Add the run context through a
+non-breaking constructor overload and property.
+
+An AG-UI integration can then offer an agent-builder helper that deserializes and validates client
+state with `JsonTypeInfo<TState>` and lets application policy choose prompt role, framing, ordering,
+and token budget. This is preferable to an endpoint-level `WithClientStateContext<TState>` API that
+would combine transport deserialization with model-prompt decisions.
+
+As an interim solution, applications can use existing `AIAgentBuilder` middleware to inspect
+`AgentRunOptions` without authoring a `DelegatingAIAgent`. The AG-UI SDK could also add an
+`AgentRunOptions` overload for its existing `TryGetRunAgentInput` helper rather than adding
+overlapping input and state helpers.
+
+### P1: Make endpoint stream configuration discoverable and composable
+
+Replace the documented metadata mechanism:
 
 ```csharp
-new AGUIStreamOptions()
-    .MapResultAsStateSnapshot<RecipeResponse>("generate_recipe");
+.WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"))
 ```
 
-### State consistency
+with a hosting-specific convention:
 
-For durable applications, define optional application-level metadata such as a state version or
-ETag. The server can reject an update based on stale client state rather than silently overwriting a
-newer value. This is an application convention unless AG-UI standardizes versioned state later.
+```csharp
+.WithAGUIStreamOptions(options =>
+    options.MapResultAsStateSnapshot("generate_recipe"))
+```
+
+Today endpoint metadata replaces globally configured options, and multiple metadata instances do
+not compose because endpoint lookup selects one. The convention should store immutable
+configuration callbacks, create fresh request options, apply global DI configuration first, and
+then apply endpoint callbacks in registration order. It must not capture request-specific mutable
+state in endpoint metadata.
+
+### P2: Improve typed server mapping, security, and diagnostics
+
+Keep domain tools protocol-neutral. Consider AOT-safe `JsonTypeInfo<T>` overloads for reading
+`RunAgentInput.State` and mapping typed results, for example:
+
+```csharp
+options.MapResultAsStateSnapshot(
+    "generate_recipe",
+    AppJsonContext.Default.RecipeResponse);
+```
+
+This is lower priority because the existing general `MapResult` API can already perform custom
+conversion.
+
+Document that `RunAgentInput.State` is untrusted client-visible data, while
+`AgentSession.StateBag` is internal session data and must not be emitted automatically.
+Applications should validate shape, size, authorization, and schema version. A durable application
+can carry a revision or ETag inside its own state model, reject stale updates, and send a replacement
+snapshot when a delta cannot be applied.
+
+`ThreadId`, `RunId`, and `ParentRunId` are continuity and correlation values, not authorization
+credentials or concurrency tokens. Server-owned state requires separate authorization and a
+correctly scoped isolation provider; an application revision must provide conflict detection.
+
+Components.AI should report state receipt, application, rejection, restoration, and delta failures
+through `UIAgentLog`; expose committed and current values separately; define whether
+`AgentState<T>.OnChanged` marshals to the renderer synchronization context; use source-generated
+serialization; and cover WebAssembly and Auto render modes.
+
+AG-UI .NET should add direct tests for snapshot and delta mappings, including continuation calls,
+invalid result types, malformed deltas, and both transports. It should also document that raw
+`BaseEvent` passthrough ignores other update content and does not close open text or reasoning
+lanes.
+
+### MEAI boundary
+
+MEAI should not add shared-state concepts. Its existing content, result, property, and
+raw-representation primitives are sufficient. MEAI should clarify that durable side-band data
+belongs in serializable `AIContent`, while `RawRepresentation` is for streaming/provider objects.
+Provider-neutral streamed function arguments remain a separate predictive-state proposal.
+
+### Samples and documentation
+
+Extend the existing Components.AI Dojo shared-state scenario and promote it to a documented,
+.NET-to-.NET multi-turn sample. It should set and reuse `ThreadId`; receive, validate, and inject
+client state; emit and apply snapshots and deltas; resend committed state; demonstrate failed-delta
+recovery with a resynchronizing snapshot; and explain client state versus session state and
+client-owned versus server-owned authority.
 
 ## Relationship to predictive state
 
