@@ -24,11 +24,21 @@
         </aside>
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to change the accent color…">
-                <WelcomeContent>
-                    <BlockRenderer TBlock="UIActionBlock">
-                        <div class="ui-action-chip">🎨 ran <code>@context.ToolName</code> in the browser</div>
+                <MessageListContent>
+                    <BlockRenderer TBlock="UIActionBlock" Context="action">
+                        @if (action.IsComplete)
+                        {
+                            <div class="ui-action-chip">🎨 ran <code>@action.ToolName</code> in the browser</div>
+                        }
+                        else
+                        {
+                            <button class="sc-ai-btn sc-ai-btn--primary"
+                                    @onclick="() => action.InvokeAsync()">
+                                Run @action.ToolName
+                            </button>
+                        }
                     </BlockRenderer>
-                </WelcomeContent>
+                </MessageListContent>
             </ChatPage>
         </div>
     </div>
@@ -44,10 +54,9 @@
         _chatClient = Agents.CreateChatClient("/tool_based_generative_ui");
 
         var setAccentColor = AIFunctionFactory.Create(
-            (string color) =>
+            async (string color) =>
             {
-                _accent = color;
-                _ = InvokeAsync(StateHasChanged);
+                await InvokeAsync(() => _accent = color);
                 return $"Accent color set to {color}.";
             },
             name: "set_accent_color",

@@ -1,5 +1,6 @@
 @page "/shared-state"
 @inject AgentServerConnection Agents
+@inject ConversationThreadStore Threads
 @implements IDisposable
 
 <PageTitle>Shared state</PageTitle>
@@ -68,12 +69,14 @@
 @code {
     private UIAgent<RecipeState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedSubscription;
 
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/shared_state");
         _agent = new UIAgent<RecipeState>(_chatClient, options =>
         {
+            options.Thread = Threads.Get("shared-state");
             options.StateMapper = ctx =>
             {
                 if (AguiState.TryMap<RecipeState>(ctx, () => _agent.State.Value, out var next))
@@ -82,13 +85,16 @@
                     {
                         ctx.SetState(next);
                     }
-                    return true;
                 }
-                return false;
             };
         });
-        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+        _stateChangedSubscription = _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _stateChangedSubscription?.Dispose();
+        _agent.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }

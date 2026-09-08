@@ -1,0 +1,116 @@
+@page "/package-features"
+@implements IDisposable
+
+<PageTitle>Components.AI package features</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Components.AI package features</h1>
+        <p>
+            Deterministic exercises for structured rich text, generated typed tool blocks,
+            activity blocks, typed state, and predictive state.
+        </p>
+    </div>
+
+    <div class="scenario__split">
+        <aside class="scenario__panel">
+            <div class="panel-card">
+                <div>State: <strong class="package-state-value">@_agent.State.Value.Value</strong></div>
+                <div>
+                    Predictive state pending:
+                    <strong class="package-state-pending">@_agent.State.HasPendingPredictiveState</strong>
+                </div>
+            </div>
+        </aside>
+        <div class="scenario__chat">
+            <ChatPage Agent="_agent" Placeholder="Enter rich, server, activity, state, or predict">
+                <MessageListContent>
+                    <BlockRenderer TBlock="WeatherToolBlock">
+                        <div class="package-weather">
+                            @context.Location:
+                            @context.Weather?.Temperature°C,
+                            @context.Weather?.Conditions
+                        </div>
+                    </BlockRenderer>
+                    <BlockRenderer TBlock="VerificationActivityBlock">
+                        <div class="package-activity">@context.Text</div>
+                    </BlockRenderer>
+                    <BlockRenderer TBlock="UIActionBlock" Context="action">
+                        <div class="package-prediction-actions">
+                            <button class="sc-ai-btn sc-ai-btn--primary"
+                                    @onclick="() => ResolvePrediction(action, accept: true)">
+                                Accept prediction
+                            </button>
+                            <button class="sc-ai-btn sc-ai-btn--secondary"
+                                    @onclick="() => ResolvePrediction(action, accept: false)">
+                                Reject prediction
+                            </button>
+                        </div>
+                    </BlockRenderer>
+                </MessageListContent>
+            </ChatPage>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly PackageFeatureChatClient _chatClient = new();
+    private UIAgent<PackageFeatureState> _agent = default!;
+    private IDisposable? _stateChangedSubscription;
+
+    protected override void OnInitialized()
+    {
+        var completePrediction = AIFunctionFactory.Create(
+            () => "Prediction resolved.",
+            name: "complete_prediction");
+
+        _agent = new UIAgent<PackageFeatureState>(_chatClient, options =>
+        {
+            options.AddGeneratedToolBlocks();
+            options.AddBlockHandler(new VerificationActivityHandler());
+            options.RegisterUIAction(completePrediction);
+            options.StateMapper = context =>
+            {
+                foreach (var content in context.UnhandledContents)
+                {
+                    if (content is VerificationStateContent state)
+                    {
+                        context.MarkHandled(content);
+                        var next = new PackageFeatureState { Value = state.Value };
+                        if (state.IsPredictive)
+                        {
+                            context.SetPredictiveState(next);
+                        }
+                        else
+                        {
+                            context.SetState(next);
+                        }
+                    }
+                }
+            };
+        });
+
+        _stateChangedSubscription = _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    private async Task ResolvePrediction(UIActionBlock action, bool accept)
+    {
+        if (accept)
+        {
+            _agent.State.AcceptPredictiveState();
+        }
+        else
+        {
+            _agent.State.RejectPredictiveState();
+        }
+
+        await action.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _stateChangedSubscription?.Dispose();
+        _agent.Dispose();
+        _chatClient.Dispose();
+    }
+}

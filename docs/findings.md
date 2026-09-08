@@ -5,13 +5,13 @@ Built against:
 - `Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` **1.15.0**
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` **1.15.0-preview.260722.1**
 - `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Server` **0.0.4** (AG-UI C# SDK)
-- Blazor AI components from `dotnet/aspnetcore` PR #67673 (branch `javiercn/components-ai-full`)
-- .NET 10.0.302 SDK, .NET Aspire 13.4
+- `Microsoft.AspNetCore.Components.AI` **0.1.0-preview.1.26458.102**
+- .NET 11.0.100 RC1 SDK, .NET Aspire 13.4
 
-> **Last re-verified 2026-07-31.** Every upstream issue/PR link in this document was checked live on
-> that date, and the reasoning and predictive-state findings were re-confirmed against the actual
-> source of `AGUI.Server` 0.0.4, `Microsoft.Extensions.AI` v10.6.0, and `Microsoft.Agents.AI`
-> 1.15.0 (not just public API surface).
+> **Components.AI re-verified 2026-09-08.** The sample now consumes the package instead of a vendored
+> source snapshot. Streaming chat, structured rich-text snapshots, generated typed tool blocks,
+> UI actions, approval and rejection, persistent-thread restoration, typed state, activity blocks,
+> and predictive-state acceptance and rollback were exercised in the running Blazor app.
 
 ## What worked well
 
@@ -24,11 +24,15 @@ Built against:
 - **Microsoft Foundry drops straight in.** Foundry exposes an OpenAI-compatible endpoint at
   `{resource}/openai/v1`, so pointing a stock `OpenAIClient` at it (the API key is accepted as a bearer
   token) and calling `.AsAIAgent(...)` was frictionless — no Azure-specific client required.
-- **Streaming chat, backend tools, human-in-the-loop approvals, shared/plan state, and
-  reasoning all worked end-to-end** (state and reasoning after the fixes below). The
+- **Streaming chat, backend tools, frontend tools, human-in-the-loop approvals, shared/plan state,
+  and reasoning all worked end-to-end** (state and reasoning after the fixes below). The
   `ApprovalRequiredAIFunction` → AG-UI interrupt → `ToolApprovalRequestContent` → Blazor
   `FunctionApprovalBlock` (Approve/Reject) → resume round-trip is smooth. Reasoning surfaces as AG-UI
   `REASONING_*` events → `TextReasoningContent` → the Blazor collapsible "thought process" block.
+- **The Components.AI package features compose cleanly.** `RichTextContent` snapshots render as
+  structured HTML, generated `ToolBlock` handlers map typed arguments and results, custom
+  `ActivityHandler<TBlock>` instances update progress in place, and `AgentState<T>` correctly
+  accepts or rolls back predictive state.
 
 ## Bugs / issues found
 
@@ -44,9 +48,9 @@ Built against:
 > - **Bug #4 (stale `ag-ui` MAF example)** → **tracked** at
 >   [ag-ui#2237](https://github.com/ag-ui-protocol/ag-ui/issues/2237) (filed 2026-07-23, still open):
 >   pinned to an old preview; uses the removed `AddAGUI`/`MapAGUI` and old state contract.
-> - **Bug #3 (`UIActionBlock` no auto-invoke)** → `dotnet/aspnetcore` (Blazor AI components, PR #67673).
->   **Fixed in our components copy** and verified end-to-end; **posted** as a PR comment (2026-07-23),
->   not an issue.
+> - **Bug #3 (`UIActionBlock` no auto-invoke)** → **resolved as expected API design.**
+>   The package intentionally exposes `UIActionBlock.InvokeAsync()` so the app's renderer controls
+>   when the browser-owned action runs. The sample now renders an explicit action button.
 > - **Bug #2 (client state not auto-sent)** → **reframed as an API-shape gap, not an SDK bug.**
 >   `AGUIChatClient` *does* forward `RunAgentInput.State`/`ParentRunId` when set via
 >   `RawRepresentationFactory` (confirmed by ag-ui#2151); the gap is that the components have an
@@ -154,26 +158,13 @@ incoming-state gate). True round-trip shared state would need the client to send
 current state to the outgoing request (e.g. surface `RunAgentInput.State` through `ChatOptions`, the way
 tools are surfaced), so the CopilotKit-style bidirectional shared-state pattern works in .NET.
 
-### 3. (components) `UIActionBlock` (frontend tools) has no default rendering or invocation
+### 3. (components) `UIActionBlock` requires explicit rendering and invocation
 
-**Severity: medium** — a frontend tool call hangs the turn with no app-side glue.
-
-When the model calls a client-registered UI action, the engine emits a `UIActionBlock` (an
-`IInteractiveBlock`) and `AgentContext` parks at `AwaitingInput` awaiting `UIActionBlock.InvokeAsync()`.
-But nothing invokes it by default, and `MessageListContext.RenderBlock` renders it as the raw type name
-(`"UIActionBlock"`). Contrast with backend tool blocks, which the engine auto-invokes.
-
-**This sample's fix:** a small `UIActionRunner` component (cascaded `AgentContext` +
-`RegisterOnBlockAdded` → `InvokeAsync`) plus a `BlockRenderer<UIActionBlock>` for presentation.
-
-**Recommendation:** consider auto-invoking `UIActionBlock`s (like backend tools) and/or shipping a
-default renderer, so "frontend tools" work without bespoke wiring.
-
-> **Update (2026-07-23): fixed in our components copy.** The engine (`AgentContext`) now auto-invokes
-> `UIActionBlock`s and only parks at `AwaitingInput` for blocks that need a human, so the
-> `UIActionRunner` glue is gone. Verified end-to-end (frontend tool auto-runs and the run resumes;
-> human approval still stalls until approved). Proposed upstream as a PR #67673 comment; see the
-> components copy's `NOTICE.md` → *Local modifications*.
+When the model calls a client-registered UI action, the engine emits a `UIActionBlock` and
+`AgentContext` waits for `UIActionBlock.InvokeAsync()`. This is intentional: the app provides a
+`BlockRenderer<UIActionBlock>` that decides whether to show a button, gather more input, or invoke
+the action automatically. The sample uses an explicit button and verified that the action runs in
+the Blazor circuit, returns its result through `IChatClient`, and resumes the conversation.
 
 ### 4. (ag-ui repo) Stale MAF integration example uses the old API
 

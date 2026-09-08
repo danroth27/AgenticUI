@@ -46,6 +46,7 @@
 @code {
     private UIAgent<PlanState> _agent = default!;
     private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedSubscription;
 
     protected override void OnInitialized()
     {
@@ -60,13 +61,16 @@
                     {
                         ctx.SetState(next);
                     }
-                    return true;
                 }
-                return false;
             };
         });
-        _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+        _stateChangedSubscription = _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _stateChangedSubscription?.Dispose();
+        _agent.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }
