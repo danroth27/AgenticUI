@@ -18,7 +18,7 @@
 
     <div class="scenario__chat">
         <ChatPage Agent="_agent" Placeholder="Ask me to schedule something…">
-            <WelcomeContent>
+            <MessageListContent>
                 @* Replaces the built-in approval UI, which dumps the raw tool arguments as JSON. *@
                 <BlockRenderer TBlock="FunctionApprovalBlock" Context="block">
                     <div class="approval-card">
@@ -64,7 +64,7 @@
                         }
                     </div>
                 </BlockRenderer>
-            </WelcomeContent>
+            </MessageListContent>
         </ChatPage>
     </div>
 </div>

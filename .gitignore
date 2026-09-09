@@ -15,6 +15,7 @@ artifacts/
 
 ## Aspire / local
 **/appsettings.*.local.json
+.dotnet/
 
 ## OS
 .DS_Store
@@ -22,3 +23,4 @@ Thumbs.db
 
 ## Playwright MCP output
 .playwright-mcp/
+.playwright-cli/

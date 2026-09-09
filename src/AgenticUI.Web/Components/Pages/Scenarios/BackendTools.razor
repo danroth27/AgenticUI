@@ -1,5 +1,4 @@
 @page "/backend-tools"
-@using System.Text.Json
 @inject AgentServerConnection Agents
 @implements IDisposable
 
@@ -18,16 +17,13 @@
 
     <div class="scenario__chat">
         <ChatPage Agent="_agent" Placeholder="Ask for the weather in a city…">
-            <WelcomeContent>
-                <BlockRenderer TBlock="FunctionInvocationContentBlock"
-                               When="@(b => b.ToolName == "get_weather")">
-                    @{
-                        var w = ReadWeather(context);
-                    }
+            <MessageListContent>
+                <BlockRenderer TBlock="WeatherToolBlock">
+                    @{ var w = context.Weather ?? new WeatherInfo(); }
                     <div class="weather-card">
                         <div class="weather-card__icon">@(w.Conditions == "sunny" ? "☀️" : "🌤️")</div>
                         <div class="weather-card__body">
-                            <div class="weather-card__location">@GetLocation(context)</div>
+                            <div class="weather-card__location">@context.Location</div>
                             <div class="weather-card__temp">@w.Temperature°C</div>
                             <div class="weather-card__meta">
                                 @w.Conditions · feels like @w.FeelsLike°C · humidity @w.Humidity% · wind @w.WindSpeed km/h
@@ -39,7 +35,7 @@
                         </div>
                     </div>
                 </BlockRenderer>
-            </WelcomeContent>
+            </MessageListContent>
         </ChatPage>
     </div>
 </div>
@@ -51,56 +47,7 @@
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/backend_tool_rendering");
-        _agent = new UIAgent(_chatClient);
-    }
-
-    private static string GetLocation(FunctionInvocationContentBlock block)
-        => block.Arguments is not null && block.Arguments.TryGetValue("location", out var v)
-            ? v?.ToString() ?? "Unknown"
-            : "Unknown";
-
-    private static WeatherInfo ReadWeather(FunctionInvocationContentBlock block)
-    {
-        if (block.Result?.Result is null)
-        {
-            return new WeatherInfo();
-        }
-
-        try
-        {
-            var element = JsonSerializer.SerializeToElement(block.Result.Result);
-            if (element.ValueKind == JsonValueKind.String)
-            {
-                element = JsonDocument.Parse(element.GetString()!).RootElement;
-            }
-            return new WeatherInfo
-            {
-                Temperature = GetInt(element, "temperature"),
-                Conditions = GetString(element, "conditions"),
-                Humidity = GetInt(element, "humidity"),
-                WindSpeed = GetInt(element, "wind_speed"),
-                FeelsLike = GetInt(element, "feelsLike"),
-            };
-        }
-        catch
-        {
-            return new WeatherInfo();
-        }
-    }
-
-    private static int GetInt(JsonElement e, string name)
-        => e.TryGetProperty(name, out var v) && v.TryGetInt32(out var i) ? i : 0;
-
-    private static string GetString(JsonElement e, string name)
-        => e.TryGetProperty(name, out var v) ? v.GetString() ?? "" : "";
-
-    private sealed class WeatherInfo
-    {
-        public int Temperature { get; set; }
-        public string Conditions { get; set; } = "sunny";
-        public int Humidity { get; set; }
-        public int WindSpeed { get; set; }
-        public int FeelsLike { get; set; }
+        _agent = new UIAgent(_chatClient, options => options.AddGeneratedToolBlocks());
     }
 
     public void Dispose() => (_chatClient as IDisposable)?.Dispose();
