@@ -30,7 +30,7 @@ flowchart LR
     Server -- "MapAGUIServer per scenario" --> Agents["MAF AIAgents"]
     Agents -- "IChatClient" --> GH["Microsoft Foundry"]
     Web -. "UIAgent + Blazor AI components" .-> Web
-```text
+```
 
 - **`AgenticUI.AgentServer`** — ASP.NET Core app. Uses
   `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (`AddAGUIServer()` + `MapAGUIServer("/route", agent)`)
