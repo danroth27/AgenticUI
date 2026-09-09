@@ -8,8 +8,8 @@
     <div class="scenario__intro">
         <h1>Reasoning</h1>
         <p>
-            A reasoning model (GPT-5 mini on Microsoft Foundry) exposes its chain of thought. The model
-            returns reasoning summaries through the OpenAI Responses API, Microsoft.Extensions.AI surfaces
+            A reasoning model (GPT-5 mini on Microsoft Foundry) exposes a reasoning summary. The model
+            returns the summary through the OpenAI Responses API, Microsoft.Extensions.AI surfaces
             them as <code>TextReasoningContent</code>, the server re-emits them as AG-UI
             <code>REASONING_*</code> events, and the Blazor AI components render them as a collapsible
             <em>"thought process"</em> panel, separate from the final answer.
