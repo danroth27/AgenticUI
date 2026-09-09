@@ -105,6 +105,8 @@ body { color: var(--app-text); }
 .scenario__intro p { color: var(--app-text-muted); max-width: 80ch; margin: 0; font-size: .95rem; line-height: 1.55; }
 .scenario__intro code { background: #f3f4f6; border-radius: 4px; padding: .05rem .3rem; font-size: .88em; }
 .scenario__note { color: var(--app-text-muted); font-size: .85rem; font-style: italic; margin-top: .35rem; }
+.scenario__actions { display: flex; align-items: center; gap: .75rem; margin-top: .6rem; }
+.chat-agent-title { font-size: 1.05rem; }
 
 .scenario__chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     background: var(--app-surface); border: 1px solid var(--app-border);
@@ -159,6 +161,22 @@ body { color: var(--app-text); }
 .weather-card__temp { font-size: 2rem; font-weight: 700; color: #1f5fbf; }
 .weather-card__meta { color: #567; font-size: .85rem; }
 .weather-card__pending { color: var(--app-text-muted); font-style: italic; font-size: .8rem; }
+
+.shared-state-status { display: flex; align-items: center; gap: .45rem; margin-bottom: .8rem;
+    color: #2e6f4f; font-size: .82rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.shared-state-status__dot { width: .55rem; height: .55rem; border-radius: 50%; background: #35a36b;
+    box-shadow: 0 0 0 3px #e2f4e9; }
+
+.delivery-preference__label { color: var(--app-text-muted); font-size: .85rem; margin-bottom: .25rem; }
+.delivery-preference__value { display: block; font-size: 1.35rem; }
+.delivery-preference__pending { width: fit-content; margin-top: .85rem; padding: .25rem .65rem;
+    border-radius: 999px; background: #fff3d6; color: #805b00; font-size: .8rem; font-weight: 600; }
+
+.prediction-card { padding: 1rem; margin: .5rem 0; border: 1px solid #d6e6fb;
+    border-radius: var(--app-radius); background: #f6f9ff; }
+.prediction-card__title { font-weight: 600; }
+.prediction-card__description { margin-top: .2rem; color: var(--app-text-muted); font-size: .88rem; }
+.package-prediction-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
 
 .swatch { width: 100%; height: 180px; border-radius: var(--app-radius); border: 1px solid var(--app-border); }
 .swatch-label { margin-top: .75rem; color: var(--app-text-muted); }

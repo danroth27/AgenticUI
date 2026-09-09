@@ -26,6 +26,10 @@
                 }
                 else
                 {
+                    <div class="shared-state-status">
+                        <span class="shared-state-status__dot"></span>
+                        Synced with the AI agent
+                    </div>
                     <h2>@r.Title</h2>
                     <div class="recipe__meta">
                         @if (!string.IsNullOrEmpty(r.SkillLevel)) { <span>🎚️ @r.SkillLevel</span> }

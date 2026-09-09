@@ -39,7 +39,8 @@ public sealed class PackageFeatureChatClient : IChatClient
             yield break;
         }
 
-        if (prompt.Contains("server", StringComparison.OrdinalIgnoreCase))
+        if (prompt.Contains("server", StringComparison.OrdinalIgnoreCase) ||
+            prompt.Contains("weather", StringComparison.OrdinalIgnoreCase))
         {
             const string callId = "weather-call";
             yield return new ChatResponseUpdate
@@ -89,7 +90,9 @@ public sealed class PackageFeatureChatClient : IChatClient
             yield break;
         }
 
-        if (prompt.Contains("predict", StringComparison.OrdinalIgnoreCase))
+        if (prompt.Contains("predict", StringComparison.OrdinalIgnoreCase) ||
+            prompt.Contains("arrive", StringComparison.OrdinalIgnoreCase) ||
+            prompt.Contains("delivery", StringComparison.OrdinalIgnoreCase))
         {
             yield return new ChatResponseUpdate
             {
@@ -97,7 +100,10 @@ public sealed class PackageFeatureChatClient : IChatClient
                 MessageId = "prediction",
                 Contents =
                 [
-                    new VerificationStateContent("Predicted value", isPredictive: true),
+                    new VerificationStateContent("Express shipping", isPredictive: true),
+                    new TextContent(
+                        "Express shipping should arrive before Friday. " +
+                        "Would you like to update the delivery preference?"),
                     new FunctionCallContent(
                         "prediction-call",
                         "complete_prediction",
@@ -240,5 +246,5 @@ public sealed class VerificationActivityHandler : ActivityHandler<VerificationAc
 
 public sealed class PackageFeatureState
 {
-    public string Value { get; set; } = "Initial value";
+    public string Value { get; set; } = "Standard shipping";
 }

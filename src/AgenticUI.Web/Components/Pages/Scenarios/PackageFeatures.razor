@@ -14,37 +14,68 @@
 
     <div class="scenario__split">
         <aside class="scenario__panel">
-            <div class="panel-card">
-                <div>State: <strong class="package-state-value">@_agent.State.Value.Value</strong></div>
-                <div>
-                    Predictive state pending:
-                    <strong class="package-state-pending">@_agent.State.HasPendingPredictiveState</strong>
+            <div class="panel-card delivery-preference">
+                <div class="shared-state-status">
+                    <span class="shared-state-status__dot"></span>
+                    Shared with the AI agent
                 </div>
+                <h2>Delivery preference</h2>
+                <div class="delivery-preference__label">
+                    @(_agent.State.HasPendingPredictiveState ? "Proposed selection" : "Current selection")
+                </div>
+                <strong class="package-state-value delivery-preference__value">
+                    @_agent.State.Value.Value
+                </strong>
+                @if (_agent.State.HasPendingPredictiveState)
+                {
+                    <div class="delivery-preference__pending package-state-pending">
+                        Pending your confirmation
+                    </div>
+                }
             </div>
         </aside>
         <div class="scenario__chat">
-            <ChatPage Agent="_agent" Placeholder="Enter rich, server, activity, state, or predict">
+            <ChatPage Agent="_agent" Placeholder="Ask about weather or delivery…">
                 <MessageListContent>
                     <BlockRenderer TBlock="WeatherToolBlock">
-                        <div class="package-weather">
-                            @context.Location:
-                            @context.Weather?.Temperature°C,
-                            @context.Weather?.Conditions
+                        @{ var weather = context.Weather ?? new WeatherInfo(); }
+                        <div class="weather-card package-weather">
+                            <div class="weather-card__icon">
+                                @(weather.Conditions == "sunny" ? "☀️" : "🌤️")
+                            </div>
+                            <div class="weather-card__body">
+                                <div class="weather-card__location">@context.Location</div>
+                                <div class="weather-card__temp">@weather.Temperature°C</div>
+                                <div class="weather-card__meta">
+                                    @weather.Conditions · feels like @weather.FeelsLike°C ·
+                                    humidity @weather.Humidity% · wind @weather.WindSpeed km/h
+                                </div>
+                                @if (!context.HasResult)
+                                {
+                                    <div class="weather-card__pending">Checking the forecast…</div>
+                                }
+                            </div>
                         </div>
                     </BlockRenderer>
                     <BlockRenderer TBlock="VerificationActivityBlock">
                         <div class="package-activity">@context.Text</div>
                     </BlockRenderer>
                     <BlockRenderer TBlock="UIActionBlock" Context="action">
-                        <div class="package-prediction-actions">
-                            <button class="sc-ai-btn sc-ai-btn--primary"
-                                    @onclick="() => ResolvePrediction(action, accept: true)">
-                                Accept prediction
-                            </button>
-                            <button class="sc-ai-btn sc-ai-btn--secondary"
-                                    @onclick="() => ResolvePrediction(action, accept: false)">
-                                Reject prediction
-                            </button>
+                        <div class="prediction-card">
+                            <div class="prediction-card__title">Use express shipping?</div>
+                            <div class="prediction-card__description">
+                                The agent predicts this option can arrive before Friday.
+                            </div>
+                            <div class="package-prediction-actions">
+                                <button class="sc-ai-btn sc-ai-btn--primary"
+                                        @onclick="() => ResolvePrediction(action, accept: true)">
+                                    Use express shipping
+                                </button>
+                                <button class="sc-ai-btn sc-ai-btn--secondary"
+                                        @onclick="() => ResolvePrediction(action, accept: false)">
+                                    Keep standard shipping
+                                </button>
+                            </div>
                         </div>
                     </BlockRenderer>
                 </MessageListContent>

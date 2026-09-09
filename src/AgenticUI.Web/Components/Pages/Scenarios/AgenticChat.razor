@@ -14,15 +14,18 @@
             <code>AGUIChatClient</code> pointed at the server's <code>/agentic_chat</code> endpoint.
             Tokens stream in over Server-Sent Events as AG-UI <code>TEXT_MESSAGE_*</code> events.
         </p>
+        <div class="scenario__actions">
+            <button class="sc-ai-btn sc-ai-btn--secondary" @onclick="VerifyPersistedThread">
+                Verify persisted thread
+            </button>
+            <span class="persisted-thread-result">@_restoredText</span>
+        </div>
     </div>
 
     <div class="scenario__chat">
         <ChatPage @key="_agent" Agent="_agent" Placeholder="Ask me anything…">
             <Header>
-                <button class="sc-ai-btn sc-ai-btn--secondary" @onclick="VerifyPersistedThread">
-                    Verify persisted thread
-                </button>
-                <span class="persisted-thread-result">@_restoredText</span>
+                <strong class="chat-agent-title">Travel planning agent</strong>
             </Header>
         </ChatPage>
     </div>
