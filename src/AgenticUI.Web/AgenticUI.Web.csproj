@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.AI" Version="0.1.0-preview.1.26458.102" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.AI" Version="0.1.0-preview.1.26459.102" />
     <!-- AG-UI C# SDK client: turns an AG-UI endpoint into an IChatClient. -->
     <PackageReference Include="AGUI.Client" Version="0.0.4" />
     <!-- AG-UI protocol events (e.g. StateSnapshotEvent/StateDeltaEvent) surfaced on the client. -->
