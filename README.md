@@ -49,7 +49,7 @@ flowchart LR
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
 - `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Server` (0.0.4 — the AG-UI C# SDK)
 - `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
-- `.NET Aspire` (13.4)
+- `.NET Aspire` (13.5.3)
 
 `NuGet.config` includes NuGet.org plus public .NET shipping feeds required by the pinned .NET 11 RC1
 SDK asset and the preview Components.AI framework dependencies, which are not published on NuGet.org.
