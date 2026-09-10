@@ -48,7 +48,11 @@
         var setAccentColor = AIFunctionFactory.Create(
             async (string color) =>
             {
-                await InvokeAsync(() => _accent = color);
+                await InvokeAsync(() =>
+                {
+                    _accent = color;
+                    StateHasChanged();
+                });
                 return $"Accent color set to {color}.";
             },
             name: "set_accent_color",

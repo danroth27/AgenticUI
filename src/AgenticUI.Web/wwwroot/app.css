@@ -105,8 +105,6 @@ body { color: var(--app-text); }
 .scenario__intro p { color: var(--app-text-muted); max-width: 80ch; margin: 0; font-size: .95rem; line-height: 1.55; }
 .scenario__intro code { background: #f3f4f6; border-radius: 4px; padding: .05rem .3rem; font-size: .88em; }
 .scenario__note { color: var(--app-text-muted); font-size: .85rem; font-style: italic; margin-top: .35rem; }
-.scenario__actions { display: flex; align-items: center; gap: .75rem; margin-top: .6rem; }
-.chat-agent-title { font-size: 1.05rem; }
 
 .scenario__chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     background: var(--app-surface); border: 1px solid var(--app-border);

@@ -1,6 +1,5 @@
 @page "/agentic-chat"
 @inject AgentServerConnection Agents
-@inject ConversationThreadStore Threads
 @implements IDisposable
 
 <PageTitle>Agentic Chat</PageTitle>
@@ -14,46 +13,21 @@
             <code>AGUIChatClient</code> pointed at the server's <code>/agentic_chat</code> endpoint.
             Tokens stream in over Server-Sent Events as AG-UI <code>TEXT_MESSAGE_*</code> events.
         </p>
-        <div class="scenario__actions">
-            <button class="sc-ai-btn sc-ai-btn--secondary" @onclick="VerifyPersistedThread">
-                Verify persisted thread
-            </button>
-            <span class="persisted-thread-result">@_restoredText</span>
-        </div>
     </div>
 
     <div class="scenario__chat">
-        <ChatPage @key="_agent" Agent="_agent" Placeholder="Ask me anything…">
-            <Header>
-                <strong class="chat-agent-title">Travel planning agent</strong>
-            </Header>
-        </ChatPage>
+        <ChatPage Agent="_agent" Placeholder="Ask me anything…" />
     </div>
 </div>
 
 @code {
     private UIAgent _agent = default!;
     private IChatClient _chatClient = default!;
-    private IConversationThread _thread = default!;
-    private string _restoredText = "Not restored";
 
     protected override void OnInitialized()
     {
         _chatClient = Agents.CreateChatClient("/agentic_chat");
-        _thread = Threads.Get("agentic-chat");
-        _agent = CreateAgent();
-    }
-
-    private UIAgent CreateAgent()
-        => new(_chatClient, options => options.Thread = _thread);
-
-    private async Task VerifyPersistedThread()
-    {
-        using var restoredAgent = CreateAgent();
-        var blocks = await restoredAgent.RestoreAsync();
-        _restoredText = string.Join(
-            " | ",
-            blocks.OfType<RichContentBlock>().Select(block => block.RawText));
+        _agent = new UIAgent(_chatClient);
     }
 
     public void Dispose()
