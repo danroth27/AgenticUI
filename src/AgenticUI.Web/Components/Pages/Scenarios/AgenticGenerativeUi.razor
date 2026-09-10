@@ -1,6 +1,7 @@
 @page "/agentic-generative-ui"
 @inject AgentServerConnection Agents
 @implements IDisposable
+@using System.Text.Json
 
 <PageTitle>Agentic generative UI</PageTitle>
 
@@ -55,16 +56,71 @@
         {
             options.StateMapper = ctx =>
             {
-                if (AguiState.TryMap<PlanState>(ctx, () => _agent.State.Value, out var next))
+                switch (ctx.Update.RawRepresentation)
                 {
-                    if (next is not null)
-                    {
-                        ctx.SetState(next);
-                    }
+                    case StateSnapshotEvent snapshot
+                        when snapshot.Snapshot.Deserialize<PlanState>() is { } state:
+                        ctx.SetState(state);
+                        break;
+                    case StateDeltaEvent delta:
+                        ctx.SetState(ApplyDelta(_agent.State.Value, delta.Delta));
+                        break;
                 }
             };
         });
         _stateChangedSubscription = _agent.State.OnChanged(() => InvokeAsync(StateHasChanged));
+    }
+
+    private static PlanState ApplyDelta(PlanState current, JsonElement delta)
+    {
+        if (delta.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("The plan state delta must be a JSON Patch array.");
+        }
+
+        var next = new PlanState
+        {
+            Steps = [.. current.Steps.Select(step => new PlanStep
+            {
+                Description = step.Description,
+                Status = step.Status
+            })]
+        };
+
+        foreach (var operation in delta.EnumerateArray())
+        {
+            string op = operation.GetProperty("op").GetString()
+                ?? throw new InvalidOperationException("The plan state operation is missing an op.");
+            string path = operation.GetProperty("path").GetString()
+                ?? throw new InvalidOperationException("The plan state operation is missing a path.");
+
+            string[] segments = path.TrimStart('/').Split('/');
+            if (op != "replace" ||
+                segments is not ["steps", var indexText, var property] ||
+                !int.TryParse(indexText, out int index) ||
+                index < 0 ||
+                index >= next.Steps.Count)
+            {
+                throw new InvalidOperationException($"Unsupported plan state operation: {op} {path}.");
+            }
+
+            string value = operation.GetProperty("value").GetString()
+                ?? throw new InvalidOperationException($"The plan state operation {path} requires a string value.");
+
+            switch (property)
+            {
+                case "description":
+                    next.Steps[index].Description = value;
+                    break;
+                case "status":
+                    next.Steps[index].Status = value;
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unsupported plan state path: {path}.");
+            }
+        }
+
+        return next;
     }
 
     public void Dispose()

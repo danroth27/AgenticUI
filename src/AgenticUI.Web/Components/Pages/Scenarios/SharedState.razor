@@ -2,6 +2,7 @@
 @inject AgentServerConnection Agents
 @inject ConversationThreadStore Threads
 @implements IDisposable
+@using System.Text.Json
 
 <PageTitle>Shared state</PageTitle>
 
@@ -83,12 +84,10 @@
             options.Thread = Threads.Get("shared-state");
             options.StateMapper = ctx =>
             {
-                if (AguiState.TryMap<RecipeState>(ctx, () => _agent.State.Value, out var next))
+                if (ctx.Update.RawRepresentation is StateSnapshotEvent snapshot &&
+                    snapshot.Snapshot.Deserialize<RecipeState>() is { } state)
                 {
-                    if (next is not null)
-                    {
-                        ctx.SetState(next);
-                    }
+                    ctx.SetState(state);
                 }
             };
         });

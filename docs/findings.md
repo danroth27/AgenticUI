@@ -51,10 +51,9 @@ unless the application adds that mapping. Automatic workflow event projection re
 ### State mapping is explicit
 
 The Blazor components expose an inbound `StateMapper`, but the application must interpret protocol
-updates and choose `SetState` or `SetPredictiveState`. For AG-UI state, this sample's
-[`AguiState`](../src/AgenticUI.Web/AguiState.cs) helper reads `StateSnapshotEvent` and
-`StateDeltaEvent` from `ChatResponseUpdate.RawRepresentation`. Its JSON Patch support is deliberately
-limited to the `add`, `replace`, and `remove` operations needed by the plan scenario.
+updates and choose `SetState` or `SetPredictiveState`. The shared-state scenario directly
+deserializes its `StateSnapshotEvent`, while the plan scenario applies the specific
+`StateDeltaEvent` replace operations emitted by its `update_plan_step` tool.
 
 `UIAgent<TState>` does not automatically send its current state as `RunAgentInput.State`.
 `AGUIChatClient` can forward state supplied through its lower-level request/raw-representation hook,
