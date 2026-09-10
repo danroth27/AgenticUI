@@ -1,0 +1,23 @@
+<div class="ui-action-chip">
+    @if (Action.IsComplete)
+    {
+        <text>🎨 ran <code>@Action.ToolName</code> in the browser</text>
+    }
+    else
+    {
+        <text>🎨 running <code>@Action.ToolName</code> in the browser…</text>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public UIActionBlock Action { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Action.IsComplete)
+        {
+            await Action.InvokeAsync();
+        }
+    }
+}

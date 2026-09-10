@@ -25,18 +25,10 @@
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to change the accent color…">
                 <MessageListContent>
-                    <BlockRenderer TBlock="UIActionBlock" Context="action">
-                        @if (action.IsComplete)
-                        {
-                            <div class="ui-action-chip">🎨 ran <code>@action.ToolName</code> in the browser</div>
-                        }
-                        else
-                        {
-                            <button class="sc-ai-btn sc-ai-btn--primary"
-                                    @onclick="() => action.InvokeAsync()">
-                                Run @action.ToolName
-                            </button>
-                        }
+                    <BlockRenderer TBlock="UIActionBlock"
+                                   When='action => action.ToolName == "set_accent_color"'
+                                   Context="action">
+                        <AutoInvokeAction Action="action" />
                     </BlockRenderer>
                 </MessageListContent>
             </ChatPage>
