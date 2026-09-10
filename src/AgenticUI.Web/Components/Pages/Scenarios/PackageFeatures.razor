@@ -92,7 +92,21 @@
     protected override void OnInitialized()
     {
         var completePrediction = AIFunctionFactory.Create(
-            () => "Prediction resolved.",
+            (bool accepted) =>
+            {
+                if (accepted)
+                {
+                    _agent.State.AcceptPredictiveState();
+                }
+                else
+                {
+                    _agent.State.RejectPredictiveState();
+                }
+
+                return accepted
+                    ? "The user accepted express shipping."
+                    : "The user kept standard shipping.";
+            },
             name: "complete_prediction");
 
         _agent = new UIAgent<PackageFeatureState>(_chatClient, options =>
@@ -126,15 +140,9 @@
 
     private async Task ResolvePrediction(UIActionBlock action, bool accept)
     {
-        if (accept)
-        {
-            _agent.State.AcceptPredictiveState();
-        }
-        else
-        {
-            _agent.State.RejectPredictiveState();
-        }
-
+        var call = action.Call ?? throw new InvalidOperationException("The prediction action has no function call.");
+        call.Arguments ??= new Dictionary<string, object?>();
+        call.Arguments["accepted"] = accept;
         await action.InvokeAsync();
     }
 
