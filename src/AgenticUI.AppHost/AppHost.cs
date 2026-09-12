@@ -15,8 +15,7 @@ var foundry = builder.AddExternalService("foundry", foundryEndpoint);
 
 // The AG-UI agent server: hosts one AG-UI endpoint per demo scenario (MAF + AG-UI C# SDK).
 var agentServer = builder.AddProject<Projects.AgenticUI_AgentServer>("agentserver")
-    .WithReference(foundry)
-    .WithEnvironment("FOUNDRY_URI", foundryEndpoint)
+    .WithEnvironment("FOUNDRY_URI", foundry)
     .WithEnvironment("FOUNDRY_MODEL", foundryModel)
     .WithEnvironment("FOUNDRY_REASONING_MODEL", foundryReasoningModel);
 
