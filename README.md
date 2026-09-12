@@ -65,17 +65,16 @@ SDK asset and the preview Components.AI framework dependencies, which are not pu
 
 ### Configure Foundry
 
-Set the endpoint and key as AppHost user-secrets (recommended):
+Set the existing Foundry account name, resource group, Azure subscription, and location as AppHost user-secrets:
 
 ```bash
-dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.cognitiveservices.azure.com/openai/v1" --project src/AgenticUI.AppHost
-dotnet user-secrets set "Parameters:foundry-api-key" "<key>" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-name" "<resource-name>" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-resource-group" "<resource-group>" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Azure:SubscriptionId" "<subscription-id>" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Azure:Location" "<location>" --project src/AgenticUI.AppHost
 ```
 
-Foundry exposes an OpenAI-compatible endpoint at `{resource}/openai/v1`, so the stock `OpenAIClient`
-works against it unchanged. Both deployment names default to `gpt-5-mini`; override with
-`Parameters:foundry-model` / `Parameters:foundry-reasoning-model` (or the `FOUNDRY_MODEL` /
-`FOUNDRY_REASONING_MODEL` env vars).
+Foundry exposes an OpenAI-compatible endpoint at `{resource}/openai/v1`, so the stock `OpenAIClient` works against it unchanged. The app authenticates with Microsoft Entra ID through `DefaultAzureCredential`; for local development, sign in with the Azure CLI or Visual Studio and ensure your identity has the **Cognitive Services OpenAI User** role on the Foundry resource. Both deployment names default to `gpt-5-mini`; override with `Parameters:foundry-model` / `Parameters:foundry-reasoning-model` (or the `FOUNDRY_MODEL` / `FOUNDRY_REASONING_MODEL` env vars).
 
 > **Why a separate reasoning path?** Reasoning models only return their reasoning summaries through
 > the OpenAI **Responses** API — chat completions spend the same reasoning tokens but return no

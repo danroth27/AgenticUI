@@ -22,7 +22,8 @@
     <!-- AG-UI C# SDK (released by the AG-UI team) -->
     <PackageReference Include="AGUI.Abstractions" Version="0.0.4" />
     <PackageReference Include="AGUI.Server" Version="0.0.4" />
-    <!-- OpenAI client, pointed at the free GitHub Models OpenAI-compatible endpoint -->
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <!-- OpenAI client, pointed at the Microsoft Foundry OpenAI-compatible endpoint -->
     <PackageReference Include="OpenAI" Version="2.10.0" />
   </ItemGroup>
 
