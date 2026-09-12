@@ -41,8 +41,6 @@ flowchart LR
 - `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
 - `.NET Aspire` (13.5.3)
 
-`NuGet.config` includes NuGet.org plus the public .NET 11 and .NET 12 shipping feeds required by the preview Blazor AI package and its framework dependencies, which are not all published on NuGet.org.
-
 ## Running it
 
 ### Prerequisites
@@ -106,7 +104,6 @@ Open the Aspire dashboard, then open the **web** resource and pick a scenario fr
 
 ### Troubleshooting
 
-- **Restore can't find preview framework packages:** Ensure the repository's `NuGet.config` is present and that your network can access the public `dotnet11` and `dotnet12` feeds.
 - **No Microsoft Foundry endpoint configured:** Set the `Parameters:foundry-endpoint` AppHost user-secret shown above.
 - **Authentication failures:** Run `az login` again and verify that the selected identity has the **Cognitive Services OpenAI User** role.
 - **Model deployment not found:** Set `Parameters:foundry-model` and `Parameters:foundry-reasoning-model` to the deployment names configured in your Foundry account.

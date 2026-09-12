@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.AI" Version="0.1.0-preview.1.26459.102" />
+    <!-- Use the .NET 11 shared framework instead of the Components AI preview's newer transitive framework package. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="11.0.0-rc.1.26425.128" ExcludeAssets="all" NoWarn="NU1510;NU1605" />
     <PackageReference Include="AGUI.Client" Version="0.0.4" />
   </ItemGroup>
 

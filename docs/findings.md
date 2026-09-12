@@ -8,6 +8,8 @@ This sample currently uses:
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
 - .NET 11.0.100 RC1 and .NET Aspire 13.5.3
 
+The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
+
 ## What the sample validates
 
 - `AddAGUIServer()` and `MapAGUIServer()` expose Microsoft Agent Framework (MAF) agents as AG-UI
