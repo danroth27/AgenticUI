@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace AgenticUI.AgentServer.Scenarios.SharedState;
@@ -11,9 +12,11 @@ public sealed class Recipe
     public string Title { get; set; } = string.Empty;
 
     [JsonPropertyName("skill_level")]
+    [Description("One of: Beginner, Intermediate, Advanced.")]
     public string SkillLevel { get; set; } = string.Empty;
 
     [JsonPropertyName("cooking_time")]
+    [Description("One of: 15 min, 30 min, 45 min, 1 hr, 1.5 hr, 2 hr.")]
     public string CookingTime { get; set; } = string.Empty;
 
     [JsonPropertyName("special_preferences")]
@@ -30,6 +33,7 @@ public sealed class Recipe
 public sealed class Ingredient
 {
     [JsonPropertyName("icon")]
+    [Description("A single emoji representing the ingredient.")]
     public string Icon { get; set; } = string.Empty;
 
     [JsonPropertyName("name")]

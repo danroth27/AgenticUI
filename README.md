@@ -12,7 +12,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 | **Backend tools** | Server-side tool calls (`TOOL_CALL_*`) mapped to a generated typed block and custom card | `/backend_tool_rendering` |
 | **Frontend tools** | Client-side UI action automatically invoked from a custom renderer | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
-| **Shared state** | Structured state via `STATE_SNAPSHOT` | `/shared_state` |
+| **Shared state** | Bidirectional typed state via request state and `STATE_SNAPSHOT` | `/shared_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Reasoning** | Reasoning summaries via `REASONING_*` events and a custom activity block | `/reasoning` |
 | **Package features** | Deterministic rich text, typed tool blocks, activities, state, and predictive accept/reject/rollback | Local `IChatClient` |
