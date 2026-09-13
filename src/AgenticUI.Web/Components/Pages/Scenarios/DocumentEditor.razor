@@ -1,4 +1,3 @@
-@using System.Text.Encodings.Web
 @using System.Text.RegularExpressions
 
 @if (!IsReadOnly)
@@ -6,8 +5,9 @@
     <textarea class="document-editor__input"
               aria-label="Document editor"
               placeholder="Write whatever you want here in Markdown format..."
-              value="@Document"
-              @oninput="UpdateDocumentAsync"></textarea>
+              @bind:get="Document"
+              @bind:set="DocumentChanged.InvokeAsync"
+              @bind:event="oninput"></textarea>
 }
 else
 {
@@ -17,7 +17,28 @@ else
          aria-readonly="true"
          aria-multiline="true"
          tabindex="0">
-        <pre class="document-editor__diff">@((MarkupString)RenderDocument())</pre>
+        <pre class="document-editor__diff">@if (!ShowDiff)
+        {
+            @Document
+        }
+        else
+        {
+            @foreach (var part in DiffWords(BaselineDocument, Document))
+            {
+                @if (part.Kind == DiffKind.Added)
+                {
+                    <em>@part.Value</em>
+                }
+                else if (part.Kind == DiffKind.Removed)
+                {
+                    <s>@part.Value</s>
+                }
+                else
+                {
+                    @part.Value
+                }
+            }
+        }</pre>
     </div>
 }
 
@@ -36,30 +57,6 @@ else
 
     [Parameter, EditorRequired]
     public EventCallback<string> DocumentChanged { get; set; }
-
-    private Task UpdateDocumentAsync(ChangeEventArgs args) =>
-        DocumentChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
-
-    private string RenderDocument()
-    {
-        if (!ShowDiff)
-        {
-            return HtmlEncoder.Default.Encode(Document);
-        }
-
-        var parts = DiffWords(BaselineDocument, Document);
-
-        return string.Concat(parts.Select(part =>
-        {
-            var encoded = HtmlEncoder.Default.Encode(part.Value);
-            return part.Kind switch
-            {
-                DiffKind.Added => $"<em>{encoded}</em>",
-                DiffKind.Removed => $"<s>{encoded}</s>",
-                _ => encoded,
-            };
-        }));
-    }
 
     private static List<DiffPart> DiffWords(string oldText, string newText)
     {
