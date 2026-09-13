@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft. All rights reserved.
-
 using System.Text.Json;
 using AGUI.Abstractions;
 using AGUI.Server;

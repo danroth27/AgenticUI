@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft. All rights reserved.
-
 using System.Text.Json;
 using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;

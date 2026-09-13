@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft. All rights reserved.
-
 using Microsoft.AspNetCore.Components.AI;
 
 namespace AgenticUI.Web.Formatting;
