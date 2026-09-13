@@ -133,7 +133,7 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             description: "Generate or update the shared recipe and display it to the user.",
             AgentServerSerializerContext.Default.Options);
 
-        return this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        var agent = this._chatClient.AsAIAgent(new ChatClientAgentOptions
         {
             Name = "SharedStateAgent",
             Description = "An agent that keeps a structured recipe in sync with the client.",
@@ -147,7 +147,11 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                       tool with a COMPLETE recipe: a title, skill_level, cooking_time, special_preferences, the
                       full list of ingredients (each with an icon, name and amount) and the step-by-step
                       instructions.
-                    - Always include every ingredient the recipe needs, keeping any the user already added.
+                    - Treat the current recipe state as the source of truth. Preserve the user's edits unless
+                      they conflict with the requested change or the recipe's dietary preferences.
+                    - Honor every dietary preference in special_preferences. Replace or remove incompatible
+                      ingredients rather than describing them as optional.
+                    - Always include every ingredient the recipe needs.
                     - Keep the ingredient list simple so it stays readable in a compact card:
                       `name` is just the ingredient (e.g. "Bread flour", "Olive oil") with no parenthetical
                       notes or substitutions, and `amount` is a short quantity of at most about 20 characters
@@ -160,6 +164,8 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 Tools = [generateRecipe],
             }
         });
+
+        return new RecipeStateAgent(agent);
     }
 
     /// <summary>Reasoning — surfaces a reasoning model's summary separately from its answer.</summary>

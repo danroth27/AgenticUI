@@ -13,7 +13,7 @@ public sealed class RecipeState
     public Recipe Recipe { get; set; } = new();
 }
 
-public sealed class Recipe
+public sealed record Recipe
 {
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
@@ -34,7 +34,7 @@ public sealed class Recipe
     public List<string> Instructions { get; set; } = [];
 }
 
-public sealed class Ingredient
+public sealed record Ingredient
 {
     [JsonPropertyName("icon")]
     public string Icon { get; set; } = string.Empty;
