@@ -1,6 +1,6 @@
-# AgenticUI — AG-UI for .NET
+# Building agentic UI with .NET
 
-A hands-on tour of **AG-UI** (the [Agent User Interaction Protocol](https://docs.ag-ui.com)) in .NET. The backend hosts agents built with the **Microsoft Agent Framework (MAF)** and the **AG-UI C# SDK**; the frontend is a **Blazor** app that consumes them with the new preview Blazor AI components. [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the two together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
+This sample demonstrates how to build rich agentic user experiences with .NET. A **Blazor** chat experience provides a flexible conversational foundation, and the scenarios extend it with tool-driven UI, human approval, shared state, generative UI, and visible reasoning. The backend hosts agents built with the **Microsoft Agent Framework (MAF)**, while the **[AG-UI](https://docs.ag-ui.com) C# SDK** carries messages, actions, and state between the agents and the preview Blazor AI components. [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the application together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
 
 ## What it demonstrates
 
