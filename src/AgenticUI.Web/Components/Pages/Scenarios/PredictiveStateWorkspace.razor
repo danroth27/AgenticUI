@@ -1,0 +1,47 @@
+@implements IAsyncDisposable
+
+<div class="predictive-layout">
+    <section class="document-panel">
+        <DocumentEditor Document="@Agent.State.Value.Document"
+                        BaselineDocument="@_runStartDocument"
+                        IsReadOnly="IsRunning"
+                        ShowDiff="@Agent.State.HasPendingPredictiveState"
+                        DocumentChanged="UpdateDocument" />
+    </section>
+    <aside class="predictive-chat">
+        <header class="workspace-chat__header">
+            <div>
+                <span class="workspace-chat__label">Copilot</span>
+                <h2>AI document editor</h2>
+            </div>
+            <button class="workspace-chat__reset"
+                    aria-label="Reset document"
+                    disabled="@IsRunning"
+                    @onclick="ResetAsync">&times;</button>
+        </header>
+        <div class="sc-ai-root sc-ai-chat-page predictive-chat-panel">
+            <div class="sc-ai-chat-page__body">
+                <MessageList>
+                    <EmptyContent>
+                        <p class="predictive-chat__welcome">
+                            Write directly or ask the agent to propose an edit.
+                        </p>
+                    </EmptyContent>
+                    <ChildContent>
+                        <BlockRenderer TBlock="UIActionBlock"
+                                       Context="action"
+                                       When="@(block => block.ToolName == "propose_document")">
+                            <ConfirmChangesDialog Block="action" />
+                        </BlockRenderer>
+                    </ChildContent>
+                </MessageList>
+            </div>
+            <DocumentSuggestions />
+            <div class="sc-ai-chat-page__footer">
+                <div class="sc-ai-chat-page__input-container">
+                    <MessageInput Placeholder="Describe an edit..." />
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>

@@ -1,38 +1,15 @@
-@using System.Text.Encodings.Web
-@using System.Text.RegularExpressions
-@implements IDisposable
+using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Components;
 
-@if (!IsReadOnly)
+namespace AgenticUI.Web.Components.Pages.Scenarios;
+
+public partial class DocumentEditor
 {
-    <textarea class="document-editor__input"
-              aria-label="Document editor"
-              placeholder="Write whatever you want here in Markdown format..."
-              value="@Document"
-              @oninput="UpdateDocumentAsync"></textarea>
-}
-else
-{
-    <div class="document-editor__surface"
-         role="textbox"
-         aria-label="Document editor"
-         aria-readonly="true"
-         aria-multiline="true"
-         tabindex="0">
-        <pre class="document-editor__diff">@((MarkupString)RenderDocument())</pre>
-    </div>
-}
-
-@code {
-    private AgentContext? _registeredContext;
-    private IDisposable? _statusChangedRegistration;
-
-    [CascadingParameter]
-    public AgentContext AgentContext { get; set; } = default!;
-
-    [Parameter]
+    [Parameter, EditorRequired]
     public string Document { get; set; } = string.Empty;
 
-    [Parameter]
+    [Parameter, EditorRequired]
     public string BaselineDocument { get; set; } = string.Empty;
 
     [Parameter]
@@ -41,30 +18,11 @@ else
     [Parameter]
     public bool ShowDiff { get; set; }
 
-    [Parameter]
+    [Parameter, EditorRequired]
     public EventCallback<string> DocumentChanged { get; set; }
 
-    [Parameter]
-    public Action<ConversationStatus>? StatusChanged { get; set; }
-
-    protected override void OnParametersSet()
-    {
-        if (!ReferenceEquals(_registeredContext, AgentContext))
-        {
-            _statusChangedRegistration?.Dispose();
-            _registeredContext = AgentContext;
-            _statusChangedRegistration = AgentContext.RegisterOnStatusChanged(OnStatusChanged);
-        }
-    }
-
-    private Task UpdateDocumentAsync(ChangeEventArgs args)
-        => DocumentChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
-
-    private void OnStatusChanged(ConversationStatus status)
-    {
-        StatusChanged?.Invoke(status);
-        _ = InvokeAsync(StateHasChanged);
-    }
+    private Task UpdateDocumentAsync(ChangeEventArgs args) =>
+        DocumentChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
 
     private string RenderDocument()
     {
@@ -145,8 +103,6 @@ else
             parts.Add(new DiffPart(value, kind));
         }
     }
-
-    public void Dispose() => _statusChangedRegistration?.Dispose();
 
     private sealed record DiffPart(string Value, DiffKind Kind);
 

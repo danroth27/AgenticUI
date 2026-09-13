@@ -1,4 +1,4 @@
-@implements IDisposable
+@implements IAsyncDisposable
 
 <div class="document-suggestions">
     <button disabled="@IsRunning"
@@ -27,10 +27,26 @@
     protected override void OnInitialized()
     {
         _statusChangedRegistration = AgentContext.RegisterOnStatusChanged(
-            status => _ = InvokeAsync(StateHasChanged));
+            HandleStatusChanged);
     }
 
     private Task SendAsync(string prompt) => AgentContext.SendMessageAsync(prompt);
 
-    public void Dispose() => _statusChangedRegistration?.Dispose();
+    private async void HandleStatusChanged(ConversationStatus _)
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception exception)
+        {
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _statusChangedRegistration?.Dispose();
+        return ValueTask.CompletedTask;
+    }
 }
