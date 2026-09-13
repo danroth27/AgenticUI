@@ -19,7 +19,7 @@ public sealed class FoundryOptions
     public const string DefaultModel = "gpt-5-mini";
     public const string DefaultReasoningModel = "gpt-5-mini";
 
-    /// <summary>The Foundry resource URI or OpenAI-compatible endpoint.</summary>
+    /// <summary>The Foundry OpenAI-compatible endpoint ending in <c>/openai/v1/</c>.</summary>
     public string? Endpoint { get; set; }
 
     /// <summary>The deployment name used by most scenarios, e.g. <c>gpt-5-mini</c>.</summary>
@@ -61,11 +61,9 @@ public static class Foundry
         var endpoint = new Uri(options.Endpoint!, UriKind.Absolute);
         if (!endpoint.AbsolutePath.TrimEnd('/').EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase))
         {
-            var endpointBuilder = new UriBuilder(endpoint)
-            {
-                Path = $"{endpoint.AbsolutePath.TrimEnd('/')}/openai/v1/"
-            };
-            endpoint = endpointBuilder.Uri;
+            throw new InvalidOperationException(
+                "The Microsoft Foundry endpoint must be the complete OpenAI-compatible endpoint " +
+                "ending in /openai/v1/.");
         }
 
         BearerTokenPolicy tokenPolicy = new(

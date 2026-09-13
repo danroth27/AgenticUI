@@ -74,10 +74,10 @@ The identity must have the **Cognitive Services OpenAI User** role on the Foundr
 Set the existing Foundry account endpoint as an AppHost user-secret:
 
 ```bash
-dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.services.ai.azure.com/" --project src/AgenticUI.AppHost
+dotnet user-secrets set "Parameters:foundry-endpoint" "https://<resource>.services.ai.azure.com/openai/v1/" --project src/AgenticUI.AppHost
 ```
 
-Use the account's base endpoint, such as `https://<resource>.services.ai.azure.com/`, or its complete OpenAI-compatible endpoint ending in `/openai/v1`. The AppHost models Foundry as an externally managed HTTPS dependency, so it won't provision or modify the Foundry account. The app authenticates with Microsoft Entra ID through `DefaultAzureCredential`; a deployed AgentServer's managed identity needs the same role as the local developer.
+Use the account's complete OpenAI-compatible endpoint ending in `/openai/v1/`. The AppHost models Foundry as an externally managed HTTPS dependency, so it won't provision or modify the Foundry account. The app authenticates with Microsoft Entra ID through `DefaultAzureCredential`; a deployed AgentServer's managed identity needs the same role as the local developer.
 
 Both deployment names default to `gpt-5-mini`. Override them when your deployment names differ:
 
