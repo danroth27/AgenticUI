@@ -153,8 +153,8 @@
         _showDiff = false;
 
         return accepted.Value
-            ? "The user confirmed the changes."
-            : "The user rejected the changes.";
+            ? "The user accepted the proposed document. Briefly acknowledge the acceptance and stop."
+            : "The user rejected the proposed document. Briefly acknowledge the rejection and stop without proposing another document.";
     }
 
     private void Reset()
