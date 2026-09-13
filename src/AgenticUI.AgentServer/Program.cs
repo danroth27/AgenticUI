@@ -1,9 +1,6 @@
 using AgenticUI.AgentServer;
 using AGUI.Server;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
-using Microsoft.Extensions.AI;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +21,6 @@ app.MapDefaultEndpoints();
 var foundry = Foundry.ReadOptions(app.Configuration);
 var chatClient = Foundry.CreateChatClient(foundry);
 var reasoningChatClient = Foundry.CreateReasoningChatClient(foundry);
-var jsonOptions = app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
 var agents = new AgentCatalog(chatClient, reasoningChatClient);
 
 // Map one AG-UI endpoint per scenario. Each is an HTTP POST that streams AG-UI events (SSE).
@@ -38,6 +34,7 @@ app.MapAGUIServer("/agentic_generative_ui", agents.CreateAgenticGenerativeUI())
         .MapResultAsStateDelta("update_plan_step")); // JSON Patch -> STATE_DELTA
 app.MapAGUIServer("/shared_state", agents.CreateSharedState())
     .WithMetadata(new AGUIStreamOptions().MapResultAsStateSnapshot("generate_recipe"));
+app.MapAGUIServer("/predictive_state", agents.CreatePredictiveState());
 app.MapAGUIServer("/reasoning", agents.CreateReasoning());
 app.MapAGUIServer("/workflow", agents.CreateWorkflow());
 app.MapAGUIServer("/selective_approval", agents.CreateSelectiveApproval());
@@ -56,6 +53,7 @@ app.MapGet("/", () => Results.Ok(new
         "/agentic_generative_ui",
         "/shared_state",
         "/reasoning",
+        "/predictive_state",
         "/workflow",
         "/selective_approval"
     }

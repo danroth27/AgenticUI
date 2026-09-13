@@ -3,6 +3,7 @@
 using System.Text.Json;
 using AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;
 using AgenticUI.AgentServer.Scenarios.BackendToolRendering;
+using AgenticUI.AgentServer.Scenarios.PredictiveState;
 using AgenticUI.AgentServer.Scenarios.SharedState;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -170,6 +171,31 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
         return new RecipeStateAgent(agent);
     }
 
+    /// <summary>Predictive state — proposed document edits reviewed before they are committed.</summary>
+    public AIAgent CreatePredictiveState()
+    {
+        var agent = this._chatClient.AsAIAgent(
+            name: "PredictiveStateAgent",
+            description: "A document editor that proposes changes for the user to review.",
+            instructions: """
+                You are a document editor assistant.
+
+                - When asked to write or edit content, call the `propose_document` tool with the
+                  complete proposed document in Markdown format.
+                - If the user asks to clear the document, propose an empty document; do not
+                  substitute a notice, placeholder, or explanation.
+                - Treat the current document state as the source of truth. Ignore older document
+                  versions in the conversation and preserve all content the user did not ask to change.
+                - Use headings, lists, bold text, and other Markdown when helpful.
+                - Do not use italic or strike-through formatting.
+                - Keep edits focused and stories short.
+                - After the user reviews the proposal, briefly acknowledge whether it was accepted
+                  or rejected and stop. Never call the tool again during the review continuation.
+                """);
+
+        return new DocumentStateAgent(agent);
+    }
+
     /// <summary>Reasoning — surfaces a reasoning model's summary separately from its answer.</summary>
     public AIAgent CreateReasoning() =>
         this._reasoningChatClient.AsAIAgent(new ChatClientAgentOptions
@@ -181,7 +207,7 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 // Keep the answer plain: the Blazor AI components render text, not markdown. Avoid
                 // asking for brevity — instructions like "answer in one or two sentences, no
                 // step-by-step recap" measurably suppress the model's reasoning summary, leaving the
-                // thought-process panel empty.
+                // reasoning-summary panel empty.
                 Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
                     + "notation, or bullet points.",
                 // Reasoning summaries are opt-in. `ChatOptions.Reasoning` is the provider-neutral

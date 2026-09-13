@@ -1,0 +1,215 @@
+@page "/predictive-state"
+@using System.Text.Json
+@inject AgentServerConnection Agents
+@inject ILoggerFactory LoggerFactory
+@implements IDisposable
+
+<PageTitle>Predictive State</PageTitle>
+
+<div class="scenario scenario--workspace">
+    <div class="scenario__intro">
+        <h1>Predictive state</h1>
+        <p>
+            Collaboratively edit a document, preview the agent's proposed changes, and then
+            accept them or restore the previous document.
+        </p>
+    </div>
+
+    <AgentBoundary @key="_agent" Agent="_agent">
+        <div class="predictive-layout">
+            <section class="document-panel">
+                <DocumentPreview Document="@_agent.State.Value.Document"
+                                 BaselineDocument="@_runStartDocument"
+                                 IsReadOnly="_runActive"
+                                 ShowDiff="_showDiff"
+                                 DocumentChanged="UpdateDocument"
+                                 StatusChanged="HandleConversationStatusChanged" />
+            </section>
+            <aside class="predictive-chat">
+                <header class="workspace-chat__header">
+                    <div>
+                        <span class="workspace-chat__label">Copilot</span>
+                        <h2>AI document editor</h2>
+                    </div>
+                    <button class="workspace-chat__reset"
+                            aria-label="Reset document"
+                            disabled="@_runActive"
+                            @onclick="Reset">&times;</button>
+                </header>
+                <div class="sc-ai-root sc-ai-chat-page predictive-chat-panel">
+                    <div class="sc-ai-chat-page__body">
+                        <MessageList>
+                            <EmptyContent>
+                                <p class="predictive-chat__welcome">
+                                    Write directly or ask the agent to propose an edit.
+                                </p>
+                            </EmptyContent>
+                            <ChildContent>
+                                <BlockRenderer TBlock="UIActionBlock"
+                                               Context="action"
+                                               When="@(block => block.ToolName == "propose_document")">
+                                    <ConfirmChangesDialog Block="action" />
+                                </BlockRenderer>
+                            </ChildContent>
+                        </MessageList>
+                    </div>
+                    <DocumentSuggestions />
+                    <div class="sc-ai-chat-page__footer">
+                        <div class="sc-ai-chat-page__input-container">
+                            <MessageInput Placeholder="Describe an edit..." />
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </AgentBoundary>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions s_jsonOptions =
+        new(JsonSerializerDefaults.Web);
+
+    private UIAgent<DocumentState> _agent = default!;
+    private IChatClient _chatClient = default!;
+    private IDisposable? _stateChangedRegistration;
+    private string _runStartDocument = string.Empty;
+    private bool _runActive;
+    private bool _showDiff;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/predictive_state");
+        Reset();
+    }
+
+    private UIAgent<DocumentState> CreateAgent(DocumentState initialState)
+    {
+        var thread = new InMemoryConversationThread(Guid.NewGuid().ToString("N"));
+
+        return new UIAgent<DocumentState>(_chatClient, options =>
+        {
+            options.Thread = thread;
+            options.ChatOptions = new ChatOptions
+            {
+                RawRepresentationFactory = _ => new RunAgentInput
+                {
+                    ThreadId = thread.ThreadId,
+                    State = JsonSerializer.SerializeToElement(
+                        _agent.State.Value,
+                        s_jsonOptions),
+                },
+            };
+            options.StateMapper = context =>
+            {
+                var proposal = context.Update.Contents
+                    .OfType<FunctionCallContent>()
+                    .FirstOrDefault(call => call.Name == "propose_document");
+                if (proposal is null ||
+                    proposal.Arguments?.TryGetValue("document", out var value) != true)
+                {
+                    return;
+                }
+
+                var document = value switch
+                {
+                    string text => text,
+                    JsonElement { ValueKind: JsonValueKind.String } element =>
+                        element.GetString() ?? string.Empty,
+                    _ => value?.ToString() ?? string.Empty,
+                };
+                context.SetPredictiveState(new DocumentState { Document = document });
+                _showDiff = true;
+                _ = InvokeAsync(StateHasChanged);
+            };
+            options.RegisterUIAction(AIFunctionFactory.Create(
+                ProposeDocument,
+                name: "propose_document",
+                description: "Propose a complete Markdown document for the user to accept or reject."));
+        }, LoggerFactory, initialState);
+    }
+
+    private string ProposeDocument(string document, bool? accepted = null)
+    {
+        if (!_agent.State.HasPendingPredictiveState ||
+            _agent.State.Value.Document != document)
+        {
+            throw new InvalidOperationException("The document proposal is no longer pending.");
+        }
+
+        if (accepted is null)
+        {
+            throw new InvalidOperationException("The document proposal has not been reviewed.");
+        }
+
+        if (accepted.Value)
+        {
+            _agent.State.AcceptPredictiveState();
+        }
+        else
+        {
+            _agent.State.RejectPredictiveState();
+        }
+
+        _showDiff = false;
+
+        return accepted.Value
+            ? "The user confirmed the changes."
+            : "The user rejected the changes.";
+    }
+
+    private void Reset()
+    {
+        if (_runActive)
+        {
+            return;
+        }
+
+        var nextAgent = CreateAgent(new DocumentState());
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        _agent = nextAgent;
+        _runStartDocument = string.Empty;
+        _showDiff = false;
+        _stateChangedRegistration = _agent.State.OnChanged(
+            () => _ = InvokeAsync(StateHasChanged));
+    }
+
+    private void UpdateDocument(string document)
+    {
+        if (!_runActive)
+        {
+            _agent.State.Value = new DocumentState { Document = document };
+        }
+    }
+
+    private void HandleConversationStatusChanged(ConversationStatus status)
+    {
+        if (status == ConversationStatus.Streaming && !_runActive)
+        {
+            _runStartDocument = _agent.State.Value.Document;
+            _runActive = true;
+            _showDiff = false;
+        }
+        else if (status is ConversationStatus.Idle or ConversationStatus.Error)
+        {
+            if (status == ConversationStatus.Error &&
+                _agent.State.HasPendingPredictiveState)
+            {
+                _agent.State.RejectPredictiveState();
+            }
+
+            _runActive = false;
+            _showDiff = false;
+            _runStartDocument = _agent.State.Value.Document;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _stateChangedRegistration?.Dispose();
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
+}

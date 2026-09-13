@@ -20,8 +20,8 @@
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.15.0" />
     <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.15.0" />
     <!-- AG-UI C# SDK (released by the AG-UI team) -->
-    <PackageReference Include="AGUI.Abstractions" Version="0.0.4" />
-    <PackageReference Include="AGUI.Server" Version="0.0.4" />
+    <PackageReference Include="AGUI.Abstractions" Version="0.0.6" />
+    <PackageReference Include="AGUI.Server" Version="0.0.6" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <!-- OpenAI client APIs used by Microsoft.Agents.AI.OpenAI and Azure.AI.OpenAI -->

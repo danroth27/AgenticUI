@@ -145,6 +145,16 @@ body { color: var(--app-text); }
 .scenario__split .sc-ai-message-list { padding: 1rem; }
 .scenario__split .sc-ai-chat-page__footer { padding: .75rem; }
 
+/* Native list markers can be misplaced inside the component's pre-wrapped streaming
+   content. Draw unordered markers explicitly so they remain aligned at every width. */
+ul.sc-ai-rich-text__list { list-style: none; padding-inline-start: 1.5rem; }
+ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item { position: relative; }
+ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item::before {
+    content: "•";
+    position: absolute;
+    left: -1.1rem;
+}
+
 @media (max-width: 640.98px) {
     .scenario { min-height: 32rem; }
     .scenario__split { grid-template-columns: 1fr; }
@@ -196,16 +206,62 @@ body { color: var(--app-text); }
 .recipe-editor__remove-btn { background: transparent; border: 0; color: #999; cursor: pointer;
     flex: 0 0 1.5rem; font-size: .9rem; height: 1.5rem; }
 
-.delivery-preference__label { color: var(--app-text-muted); font-size: .85rem; margin-bottom: .25rem; }
-.delivery-preference__value { display: block; font-size: 1.35rem; }
-.delivery-preference__pending { width: fit-content; margin-top: .85rem; padding: .25rem .65rem;
-    border-radius: 999px; background: #fff3d6; color: #805b00; font-size: .8rem; font-weight: 600; }
+/* ---- Predictive state workspace ---- */
+.scenario--workspace { overflow: hidden; }
+.predictive-layout { flex: 1 1 auto; min-height: 0; display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(21rem, 27rem); gap: 1rem; }
+.document-panel,
+.predictive-chat { min-height: 0; overflow: hidden; border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); box-shadow: var(--app-shadow); }
+.document-panel { position: relative; background: var(--app-bg); padding: 1.25rem; }
+.document-panel::before { content: "DOCUMENT"; position: absolute; top: 1.7rem; left: 2rem; z-index: 1;
+    color: #8b8b98; font-size: .65rem; font-weight: 700; letter-spacing: .12em; }
+.document-editor__input,
+.document-editor__surface { box-sizing: border-box; width: 100%; height: 100%; min-height: 25rem;
+    padding: 3.5rem 2.5rem 2.5rem; border: 1px solid var(--app-border); border-radius: var(--app-radius);
+    outline: none; background: var(--app-surface); box-shadow: var(--app-shadow-lg); color: var(--app-text);
+    font: 400 .92rem/1.75 ui-monospace, "Cascadia Code", Consolas, monospace; resize: none; }
+.document-editor__surface { overflow: auto; }
+.document-editor__diff { margin: 0; white-space: pre-wrap; font: inherit; }
+.document-editor__diff em { padding: .08rem .12rem; background: #d8f5eb; color: #176451;
+    font-style: normal; }
+.document-editor__diff s { padding: .08rem .12rem; background: #ffe1dd; color: #a2473c; }
+.predictive-chat { display: flex; flex-direction: column; background: var(--app-surface); }
+.workspace-chat__header { display: flex; flex: 0 0 auto; justify-content: space-between;
+    align-items: center; padding: 1rem 1.15rem; border-bottom: 1px solid var(--app-border); }
+.workspace-chat__label { display: block; color: var(--app-text-muted); font-size: .6rem;
+    font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.workspace-chat__header h2 { margin: .12rem 0 0; font-size: .95rem; font-weight: 650; }
+.workspace-chat__reset { width: 2rem; height: 2rem; border: 1px solid var(--app-border);
+    border-radius: .6rem; background: var(--app-bg); color: var(--app-text-muted); font-size: 1.2rem; }
+.predictive-chat-panel { flex: 1 1 auto; min-height: 0; height: auto; background: transparent; }
+.predictive-chat__welcome { max-width: 18rem; margin: auto; color: var(--app-text-muted);
+    font-size: .85rem; line-height: 1.6; text-align: center; }
+.document-suggestions { display: flex; flex-wrap: wrap; gap: .35rem; padding: .6rem .75rem 0; }
+.document-suggestions button { padding: .38rem .6rem; border: 1px solid var(--app-border);
+    border-radius: 999px; background: var(--app-bg); color: var(--app-text-muted); font-size: .72rem; }
+.document-suggestions button:hover:not(:disabled) { border-color: var(--app-brand);
+    background: var(--app-brand-soft); color: var(--app-brand); }
+.confirm-changes { margin: .5rem 0; padding: .9rem; border: 1px solid var(--app-border);
+    border-radius: var(--app-radius); background: #fafafa; }
+.confirm-changes__eyebrow { color: var(--app-brand); font-size: .62rem; font-weight: 700;
+    letter-spacing: .09em; text-transform: uppercase; }
+.confirm-changes h3 { margin: .15rem 0 0; font-size: .95rem; }
+.confirm-changes__message { margin: .55rem 0; color: var(--app-text-muted); font-size: .8rem; }
+.confirm-changes__actions { display: flex; gap: .4rem; }
+.confirm-changes__btn { flex: 1; padding: .45rem .65rem; border: 1px solid var(--app-border);
+    border-radius: .55rem; background: var(--app-surface); font-size: .78rem; font-weight: 650; }
+.confirm-changes__btn--accept { border-color: var(--app-brand); background: var(--app-brand); color: #fff; }
+.confirm-changes__status { font-size: .8rem; font-weight: 650; }
+.confirm-changes__status--accepted { color: #27816b; }
+.confirm-changes__status--rejected { color: #ad4e43; }
 
-.prediction-card { padding: 1rem; margin: .5rem 0; border: 1px solid #d6e6fb;
-    border-radius: var(--app-radius); background: #f6f9ff; }
-.prediction-card__title { font-weight: 600; }
-.prediction-card__description { margin-top: .2rem; color: var(--app-text-muted); font-size: .88rem; }
-.package-prediction-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+@media (max-width: 980px) {
+    .scenario--workspace { overflow: auto; }
+    .predictive-layout { grid-template-columns: 1fr; overflow: visible; }
+    .document-panel,
+    .predictive-chat { min-height: 34rem; }
+}
 
 .swatch { width: 100%; height: 180px; border-radius: var(--app-radius); border: 1px solid var(--app-border); }
 .swatch-label { margin-top: .75rem; color: var(--app-text-muted); }
@@ -246,4 +302,8 @@ body { color: var(--app-text); }
     .ingredient-row__icon { flex-basis: 2rem; }
     .ingredient-row__name { flex: 1 1 calc(100% - 4rem); }
     .ingredient-row__amount { flex: 1 1 100%; }
+    .document-panel { padding: .75rem; }
+    .document-panel::before { top: 1.2rem; left: 1.5rem; }
+    .document-editor__input,
+    .document-editor__surface { padding: 3rem 1.25rem 1.25rem; }
 }
