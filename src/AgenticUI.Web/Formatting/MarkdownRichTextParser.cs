@@ -252,7 +252,8 @@ internal static class MarkdownRichTextParser
         var position = 0;
         while (position < text.Length)
         {
-            if (TryAddImage(parent, text, ref position) ||
+            if (TryAddAutomaticLink(parent, text, ref position) ||
+                TryAddImage(parent, text, ref position) ||
                 TryAddLink(parent, text, ref position) ||
                 TryAddDelimited(parent, text, ref position, "**", static () => new StrongNode()) ||
                 TryAddDelimited(parent, text, ref position, "~~", static () => new StrikethroughNode()) ||
@@ -267,6 +268,42 @@ internal static class MarkdownRichTextParser
             parent.AddChild(new TextNode(text.Substring(position, length)));
             position += length;
         }
+    }
+
+    private static bool TryAddAutomaticLink(
+        RichTextNode parent,
+        string text,
+        ref int position)
+    {
+        var remaining = text.AsSpan(position);
+        if (!remaining.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+            !remaining.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var length = 0;
+        while (length < remaining.Length && !char.IsWhiteSpace(remaining[length]))
+        {
+            length++;
+        }
+
+        while (length > 0 && remaining[length - 1] is '.' or ',' or ';' or ':' or '!' or '?')
+        {
+            length--;
+        }
+
+        if (length == 0)
+        {
+            return false;
+        }
+
+        var url = remaining[..length].ToString();
+        var link = new LinkNode(url);
+        link.AddChild(new TextNode(url));
+        parent.AddChild(link);
+        position += length;
+        return true;
     }
 
     private static bool TryAddImage(RichTextNode parent, string text, ref int position)
@@ -361,7 +398,7 @@ internal static class MarkdownRichTextParser
     private static int FindNextMarker(string text, int start)
     {
         var result = -1;
-        foreach (var marker in new[] { "![", "[", "**", "~~", "*", "`" })
+        foreach (var marker in new[] { "https://", "http://", "![", "[", "**", "~~", "*", "`" })
         {
             var index = text.IndexOf(marker, start, StringComparison.Ordinal);
             if (index >= 0 && (result < 0 || index < result))

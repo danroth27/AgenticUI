@@ -145,6 +145,16 @@ body { color: var(--app-text); }
 .scenario__split .sc-ai-message-list { padding: 1rem; }
 .scenario__split .sc-ai-chat-page__footer { padding: .75rem; }
 
+/* Native list markers can be misplaced inside the component's pre-wrapped streaming
+   content. Draw unordered markers explicitly so they remain aligned at every width. */
+ul.sc-ai-rich-text__list { list-style: none; padding-inline-start: 1.5rem; }
+ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item { position: relative; }
+ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item::before {
+    content: "•";
+    position: absolute;
+    left: -1.1rem;
+}
+
 @media (max-width: 640.98px) {
     .scenario { min-height: 32rem; }
     .scenario__split { grid-template-columns: 1fr; }
