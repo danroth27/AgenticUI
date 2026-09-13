@@ -182,8 +182,8 @@ body { color: var(--app-text); }
 .recipe-editor__instruction,
 .ingredient-row { align-items: center; display: flex; gap: .45rem; margin-bottom: .4rem; }
 .ingredient-row { background: #fff; border: 1px solid #ececf1; border-radius: .5rem; padding: .4rem .55rem; }
-.ingredient-row__icon { flex: 0 0 3rem; font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
-    font-size: 1.2rem !important; line-height: 1.2; padding: .35rem !important; text-align: center; }
+.ingredient-row__icon { flex: 0 0 2rem; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 1.2rem; line-height: 1.2; text-align: center; }
 .ingredient-row__name { flex: 2; }
 .ingredient-row__amount { flex: 1; color: var(--app-text-muted) !important; }
 .recipe-editor__step-num { align-items: center; background: var(--app-brand); border-radius: 50%; color: #fff;
@@ -242,7 +242,7 @@ body { color: var(--app-text); }
 @media (max-width: 640.98px) {
     .recipe-editor__row { flex-direction: column; }
     .ingredient-row { align-items: stretch; flex-wrap: wrap; }
-    .ingredient-row__icon { flex-basis: 3rem; }
+    .ingredient-row__icon { flex-basis: 2rem; }
     .ingredient-row__name { flex: 1 1 calc(100% - 4rem); }
     .ingredient-row__amount { flex: 1 1 100%; }
 }

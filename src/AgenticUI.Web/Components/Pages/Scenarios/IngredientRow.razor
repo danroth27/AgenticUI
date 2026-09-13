@@ -1,9 +1,7 @@
 <div class="ingredient-row">
-    <input type="text"
-           class="ingredient-row__icon"
-           aria-label="Ingredient icon"
-           value="@Ingredient.Icon"
-           @oninput="args => UpdateAsync(nameof(Ingredient.Icon), args)" />
+    <span class="ingredient-row__icon" aria-hidden="true">
+        @(string.IsNullOrWhiteSpace(Ingredient.Icon) ? "🍽️" : Ingredient.Icon)
+    </span>
     <input type="text"
            class="ingredient-row__name"
            aria-label="Ingredient name"
@@ -37,7 +35,6 @@
         var value = args.Value?.ToString() ?? string.Empty;
         var ingredient = propertyName switch
         {
-            nameof(Ingredient.Icon) => Ingredient with { Icon = value },
             nameof(Ingredient.Name) => Ingredient with { Name = value },
             nameof(Ingredient.Amount) => Ingredient with { Amount = value },
             _ => throw new InvalidOperationException(
