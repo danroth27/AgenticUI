@@ -5,6 +5,7 @@ This sample currently uses:
 - `Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
 - `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Server` 0.0.4
+- `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
 - .NET 11.0.100 RC1 and .NET Aspire 13.5.3
 

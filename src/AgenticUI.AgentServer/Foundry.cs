@@ -1,25 +1,23 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using System.ClientModel.Primitives;
+using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
-using OpenAI;
 using OpenAI.Chat;
 
 namespace AgenticUI.AgentServer;
 
 /// <summary>
 /// Configuration for the <see href="https://learn.microsoft.com/azure/ai-foundry/">Microsoft Foundry</see>
-/// resource that backs every scenario. Foundry exposes an OpenAI-compatible endpoint at
-/// <c>{resource}/openai/v1</c>, so the stock <see cref="OpenAIClient"/> works against it directly —
-/// authenticated with Microsoft Entra ID.
+/// resource that backs every scenario. The Azure OpenAI client authenticates to the resource with
+/// Microsoft Entra ID.
 /// </summary>
 public sealed class FoundryOptions
 {
     public const string DefaultModel = "gpt-5-mini";
     public const string DefaultReasoningModel = "gpt-5-mini";
 
-    /// <summary>The Foundry OpenAI-compatible endpoint ending in <c>/openai/v1/</c>.</summary>
+    /// <summary>The Foundry resource endpoint.</summary>
     public string? Endpoint { get; set; }
 
     /// <summary>The deployment name used by most scenarios, e.g. <c>gpt-5-mini</c>.</summary>
@@ -56,19 +54,8 @@ public static class Foundry
         return options;
     }
 
-    private static OpenAIClient CreateClient(FoundryOptions options)
-    {
-        BearerTokenPolicy tokenPolicy = new(
-            new DefaultAzureCredential(),
-            "https://ai.azure.com/.default");
-
-        return new OpenAIClient(
-            authenticationPolicy: tokenPolicy,
-            options: new OpenAIClientOptions
-            {
-                Endpoint = new Uri(options.Endpoint!, UriKind.Absolute)
-            });
-    }
+    private static AzureOpenAIClient CreateClient(FoundryOptions options) =>
+        new(new Uri(options.Endpoint!, UriKind.Absolute), new DefaultAzureCredential());
 
     /// <summary>Creates a chat-completions <see cref="ChatClient"/> for a Foundry deployment.</summary>
     /// <param name="options">The Foundry configuration.</param>
