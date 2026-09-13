@@ -70,6 +70,12 @@ integrate a parser. Agentic Chat wraps its AG-UI client in
 streaming Markdown and projects it through the sample's
 [`MarkdownRichTextParser`](../src/AgenticUI.Web/Formatting/MarkdownRichTextParser.cs).
 
+The package's built-in structured-text renderer is part of `MessageList` and is not exposed as a
+standalone component for custom blocks. The reasoning scenario therefore displays its
+provider-generated reasoning summary as plain text inside its custom activity block. A summary may
+contain visible Markdown syntax; formatting it would currently require the application to duplicate
+the package's node-rendering logic.
+
 ### Persistence and package maturity
 
 The shared-state scenario's `ConversationThreadStore` keeps conversation threads in memory so the UI can reconnect to the current thread. It is not durable or multi-instance storage.

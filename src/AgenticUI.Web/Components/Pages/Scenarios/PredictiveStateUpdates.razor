@@ -1,7 +1,6 @@
 @page "/predictive-state-updates"
 @using System.Text.Json
 @inject AgentServerConnection Agents
-@inject ConversationThreadStore ThreadStore
 @inject ILoggerFactory LoggerFactory
 @implements IDisposable
 
@@ -87,7 +86,7 @@
 
     private UIAgent<DocumentState> CreateAgent(DocumentState initialState)
     {
-        var thread = ThreadStore.Get(Guid.NewGuid().ToString("N"));
+        var thread = new InMemoryConversationThread(Guid.NewGuid().ToString("N"));
 
         return new UIAgent<DocumentState>(_chatClient, options =>
         {
