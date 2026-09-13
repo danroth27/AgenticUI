@@ -89,7 +89,7 @@ dotnet user-secrets set "Parameters:foundry-reasoning-model" "<reasoning-deploym
 ### Run
 
 ```bash
-aspire start --non-interactive
+aspire run
 ```
 
 Open the Aspire dashboard, then open the **web** resource and pick a scenario from the nav.
