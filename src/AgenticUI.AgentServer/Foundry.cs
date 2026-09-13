@@ -58,21 +58,16 @@ public static class Foundry
 
     private static OpenAIClient CreateClient(FoundryOptions options)
     {
-        var endpoint = new Uri(options.Endpoint!, UriKind.Absolute);
-        if (!endpoint.AbsolutePath.TrimEnd('/').EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                "The Microsoft Foundry endpoint must be the complete OpenAI-compatible endpoint " +
-                "ending in /openai/v1/.");
-        }
-
         BearerTokenPolicy tokenPolicy = new(
             new DefaultAzureCredential(),
             "https://ai.azure.com/.default");
 
         return new OpenAIClient(
             authenticationPolicy: tokenPolicy,
-            options: new OpenAIClientOptions { Endpoint = endpoint });
+            options: new OpenAIClientOptions
+            {
+                Endpoint = new Uri(options.Endpoint!, UriKind.Absolute)
+            });
     }
 
     /// <summary>Creates a chat-completions <see cref="ChatClient"/> for a Foundry deployment.</summary>
