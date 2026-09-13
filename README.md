@@ -46,7 +46,6 @@ flowchart LR
 
 ### Prerequisites
 
-- [Git](https://git-scm.com/downloads)
 - [.NET 11 RC1 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)
 - [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
