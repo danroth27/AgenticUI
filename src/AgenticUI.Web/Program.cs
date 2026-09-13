@@ -24,7 +24,6 @@ builder.Services.AddHttpClient("agentserver", client =>
 
 // Helper that turns an AG-UI endpoint on the agent server into an IChatClient / UIAgent.
 builder.Services.AddScoped<AgentServerConnection>();
-builder.Services.AddScoped<ConversationThreadStore>();
 
 var app = builder.Build();
 

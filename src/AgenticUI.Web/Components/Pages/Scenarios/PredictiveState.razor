@@ -84,16 +84,15 @@
 
     private UIAgent<DocumentState> CreateAgent(DocumentState initialState)
     {
-        var thread = new InMemoryConversationThread(Guid.NewGuid().ToString("N"));
+        var threadId = Guid.NewGuid().ToString("N");
 
         return new UIAgent<DocumentState>(_chatClient, options =>
         {
-            options.Thread = thread;
             options.ChatOptions = new ChatOptions
             {
                 RawRepresentationFactory = _ => new RunAgentInput
                 {
-                    ThreadId = thread.ThreadId,
+                    ThreadId = threadId,
                     State = JsonSerializer.SerializeToElement(
                         _agent.State.Value,
                         s_jsonOptions),

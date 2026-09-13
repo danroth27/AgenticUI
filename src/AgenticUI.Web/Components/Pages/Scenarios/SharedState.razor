@@ -1,6 +1,5 @@
 @page "/shared-state"
 @inject AgentServerConnection Agents
-@inject ConversationThreadStore Threads
 @implements IDisposable
 @using System.Text.Json
 
@@ -37,16 +36,15 @@
 
     protected override void OnInitialized()
     {
-        var thread = Threads.Get("shared-state");
+        var threadId = Guid.NewGuid().ToString("N");
         _chatClient = Agents.CreateChatClient("/shared_state");
         _agent = new UIAgent<RecipeState>(_chatClient, options =>
         {
-            options.Thread = thread;
             options.ChatOptions = new ChatOptions
             {
                 RawRepresentationFactory = _ => new RunAgentInput
                 {
-                    ThreadId = thread.ThreadId,
+                    ThreadId = threadId,
                     State = JsonSerializer.SerializeToElement(_agent.State.Value, s_jsonOptions),
                 },
             };
