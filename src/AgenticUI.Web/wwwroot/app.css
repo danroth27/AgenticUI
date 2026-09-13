@@ -242,6 +242,7 @@ ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item::before {
     border-radius: 999px; background: var(--app-bg); color: var(--app-text-muted); font-size: .72rem; }
 .document-suggestions button:hover:not(:disabled) { border-color: var(--app-brand);
     background: var(--app-brand-soft); color: var(--app-brand); }
+.document-suggestions + .sc-ai-chat-page__footer { padding-top: .5rem; }
 .confirm-changes { margin: .5rem 0; padding: .9rem; border: 1px solid var(--app-border);
     border-radius: var(--app-radius); background: #fafafa; }
 .confirm-changes__eyebrow { color: var(--app-brand); font-size: .62rem; font-weight: 700;

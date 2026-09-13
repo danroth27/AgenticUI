@@ -17,28 +17,30 @@ else
          aria-readonly="true"
          aria-multiline="true"
          tabindex="0">
-        <pre class="document-editor__diff">@if (!ShowDiff)
+        @if (!ShowDiff)
         {
-            @Document
+            <pre class="document-editor__diff">@Document</pre>
         }
         else
         {
-            @foreach (var part in DiffWords(BaselineDocument, Document))
-            {
-                @if (part.Kind == DiffKind.Added)
+            <pre class="document-editor__diff">
+                @foreach (var part in DiffWords(BaselineDocument, Document))
                 {
-                    <em>@part.Value</em>
+                    @if (part.Kind == DiffKind.Added)
+                    {
+                        <em>@part.Value</em>
+                    }
+                    else if (part.Kind == DiffKind.Removed)
+                    {
+                        <s>@part.Value</s>
+                    }
+                    else
+                    {
+                        @part.Value
+                    }
                 }
-                else if (part.Kind == DiffKind.Removed)
-                {
-                    <s>@part.Value</s>
-                }
-                else
-                {
-                    @part.Value
-                }
-            }
-        }</pre>
+            </pre>
+        }
     </div>
 }
 
