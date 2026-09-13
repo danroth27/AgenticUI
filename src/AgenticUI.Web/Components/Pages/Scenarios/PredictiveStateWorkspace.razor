@@ -51,6 +51,9 @@
 
                 private Task ResetAsync() => ResetRequested.InvokeAsync();
 
+                private Task SendSuggestionAsync(string prompt) =>
+                    AgentContext.SendMessageAsync(prompt);
+
                 private async void HandleStateChanged()
                 {
                     try
@@ -128,7 +131,8 @@
                     </ChildContent>
                 </MessageList>
             </div>
-            <DocumentSuggestions />
+            <DocumentSuggestions Disabled="IsRunning"
+                                 SuggestionSelected="SendSuggestionAsync" />
             <div class="sc-ai-chat-page__footer">
                 <div class="sc-ai-chat-page__input-container">
                     <MessageInput Placeholder="Describe an edit..." />

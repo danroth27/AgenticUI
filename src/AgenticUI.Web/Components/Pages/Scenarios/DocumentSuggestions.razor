@@ -1,52 +1,24 @@
-@implements IAsyncDisposable
-
 <div class="document-suggestions">
-    <button disabled="@IsRunning"
-            @onclick='() => SendAsync("Please write a short story about a pirate named Candy Beard.")'>
+    <button disabled="@Disabled"
+            @onclick='() => SelectAsync("Please write a short story about a pirate named Candy Beard.")'>
         Pirate story
     </button>
-    <button disabled="@IsRunning"
-            @onclick='() => SendAsync("Please write a short story about a mermaid named Luna.")'>
+    <button disabled="@Disabled"
+            @onclick='() => SelectAsync("Please write a short story about a mermaid named Luna.")'>
         Mermaid story
     </button>
-    <button disabled="@IsRunning"
-            @onclick='() => SendAsync("Please add a character named Courage.")'>
+    <button disabled="@Disabled"
+            @onclick='() => SelectAsync("Please add a character named Courage.")'>
         Add character
     </button>
 </div>
 
 @code {
-    private IDisposable? _statusChangedRegistration;
+    [Parameter]
+    public bool Disabled { get; set; }
 
-    [CascadingParameter]
-    public AgentContext AgentContext { get; set; } = default!;
+    [Parameter, EditorRequired]
+    public EventCallback<string> SuggestionSelected { get; set; }
 
-    private bool IsRunning
-        => AgentContext.Status is ConversationStatus.Streaming or ConversationStatus.AwaitingInput;
-
-    protected override void OnInitialized()
-    {
-        _statusChangedRegistration = AgentContext.RegisterOnStatusChanged(
-            HandleStatusChanged);
-    }
-
-    private Task SendAsync(string prompt) => AgentContext.SendMessageAsync(prompt);
-
-    private async void HandleStatusChanged(ConversationStatus _)
-    {
-        try
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception exception)
-        {
-            await DispatchExceptionAsync(exception);
-        }
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _statusChangedRegistration?.Dispose();
-        return ValueTask.CompletedTask;
-    }
+    private Task SelectAsync(string prompt) => SuggestionSelected.InvokeAsync(prompt);
 }
