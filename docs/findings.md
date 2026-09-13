@@ -53,9 +53,9 @@ updates and choose `SetState` or `SetPredictiveState`. The shared-state scenario
 deserializes its `StateSnapshotEvent`, while the plan scenario applies the specific
 `StateDeltaEvent` replace operations emitted by its `update_plan_step` tool.
 
-`UIAgent<TState>` does not automatically send its current state as `RunAgentInput.State`.
-`AGUIChatClient` can forward state supplied through its lower-level request/raw-representation hook,
-but applications that need bidirectional editable state must add that outbound mapping.
+`UIAgent<TState>` does not automatically send its current state as `RunAgentInput.State`. `AGUIChatClient` can forward state supplied through `ChatOptions.RawRepresentationFactory`, but applications that need bidirectional editable state must add that outbound mapping. Local edits remain client-side until the next agent request.
+
+Receiving `RunAgentInput.State` also does not automatically make that state model context. A delegating agent or chat client can recover the originating input with `TryGetRunAgentInput` and explicitly project the state into the messages sent to the model. When sending the full conversation history, current state must be placed immediately before the latest user request; placing it before older tool results can let a stale snapshot override the user's local edits.
 
 The components package does support predictive state. The package-features scenario confirms
 `SetPredictiveState`, `AcceptPredictiveState`, and `RejectPredictiveState` rollback. That scenario

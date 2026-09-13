@@ -147,6 +147,8 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                       tool with a COMPLETE recipe: a title, skill_level, cooking_time, special_preferences, the
                       full list of ingredients (each with an icon, name and amount) and the step-by-step
                       instructions.
+                    - Use Beginner, Intermediate, or Advanced for skill_level.
+                    - Use 15 min, 30 min, 45 min, 1 hr, 1.5 hr, or 2 hr for cooking_time.
                     - Treat the current recipe state as the source of truth. Preserve the user's edits unless
                       they conflict with the requested change or the recipe's dietary preferences.
                     - Honor every dietary preference in special_preferences. Replace or remove incompatible

@@ -163,8 +163,9 @@ body { color: var(--app-text); }
 .shared-state-status__dot { width: .55rem; height: .55rem; border-radius: 50%; background: #35a36b;
     box-shadow: 0 0 0 3px #e2f4e9; }
 
-.recipe-editor { width: 100%; background: var(--app-surface); border: 1px solid #e7e7ee;
-    border-radius: var(--app-radius-lg); box-shadow: var(--app-shadow-lg); padding: 1.25rem; }
+.recipe-editor { box-sizing: border-box; min-width: 0; width: 100%; max-width: 44rem;
+    background: var(--app-surface); border: 1px solid #e7e7ee; border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-lg); padding: 1.25rem; }
 .recipe-editor__status { display: flex; align-items: center; gap: .45rem; margin-bottom: 1rem;
     color: #2e6f4f; font-size: .78rem; font-weight: 600; }
 .recipe-editor__section { margin-bottom: 1rem; }
@@ -173,7 +174,7 @@ body { color: var(--app-text); }
 .recipe-editor__field > label:first-child { color: var(--app-text); display: block; font-size: .82rem;
     font-weight: 650; margin-bottom: .4rem; }
 .recipe-editor__row { display: flex; gap: .75rem; }
-.recipe-editor__field { flex: 1; }
+.recipe-editor__field { flex: 1; min-width: 0; }
 .recipe-editor input[type="text"],
 .recipe-editor select { background: #fff; border: 1px solid var(--app-border); border-radius: .45rem;
     box-sizing: border-box; color: var(--app-text); font-size: .82rem; padding: .5rem .65rem; width: 100%; }
@@ -184,8 +185,8 @@ body { color: var(--app-text); }
 .ingredient-row { background: #fff; border: 1px solid #ececf1; border-radius: .5rem; padding: .4rem .55rem; }
 .ingredient-row__icon { flex: 0 0 2rem; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
     font-size: 1.2rem; line-height: 1.2; text-align: center; }
-.ingredient-row__name { flex: 2; }
-.ingredient-row__amount { flex: 1; color: var(--app-text-muted) !important; }
+.ingredient-row__name { flex: 2 1 0; min-width: 0; }
+.ingredient-row__amount { flex: 1 1 0; min-width: 0; color: var(--app-text-muted) !important; }
 .recipe-editor__step-num { align-items: center; background: var(--app-brand); border-radius: 50%; color: #fff;
     display: flex; flex: 0 0 1.45rem; font-size: .68rem; font-weight: 650; height: 1.45rem;
     justify-content: center; }
