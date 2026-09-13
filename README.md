@@ -2,6 +2,8 @@
 
 This sample demonstrates how to build rich agentic user experiences with .NET. A **Blazor** chat experience provides a flexible conversational foundation, and the scenarios extend it with tool-driven UI, human approval, shared state, generative UI, and visible reasoning. The backend hosts agents built with the **Microsoft Agent Framework (MAF)**, while the **[AG-UI](https://docs.ag-ui.com) C# SDK** carries messages, actions, and state between the agents and the preview [Blazor AI components](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11#experimental-blazor-ai-components-for-agentic-user-interfaces). [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the application together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
 
+![The Backend Tools page rendering a server tool call as an interactive weather card](docs/images/agentic-ui-weather-card.png)
+
 ## What it demonstrates
 
 | Scenario | AG-UI feature | Endpoint |
@@ -17,17 +19,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph AppHost["Aspire AppHost"]
-        Web["AgenticUI.Web (Blazor)"]
-        Server["AgenticUI.AgentServer (ASP.NET Core)"]
-    end
-    Web -- "AGUIChatClient (IChatClient) over HTTP + SSE" --> Server
-    Server -- "MapAGUIServer per scenario" --> Agents["MAF AIAgents"]
-    Agents -- "IChatClient" --> GH["Microsoft Foundry"]
-    Web -. "UIAgent + Blazor AI components" .-> Web
-```
+![Architecture of the AgenticUI sample from Blazor through AG-UI and ASP.NET Core to Microsoft Foundry](docs/images/blazor-agentic-ui-architecture.svg)
 
 - **`AgenticUI.AgentServer`** — ASP.NET Core app. Uses `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (`AddAGUIServer()` + `MapAGUIServer("/route", agent)`) to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by Microsoft Foundry via `Microsoft.Agents.AI.OpenAI`.
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a standard `IChatClient`. UI is rendered with the Blazor AI components (`ChatPage`, `MessageList`, `BlockRenderer`, `UIAgent<TState>`, …).
