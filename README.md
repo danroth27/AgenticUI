@@ -13,7 +13,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 | **Frontend tools** | Client-side UI action automatically invoked from a custom renderer | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
 | **Shared state** | Bidirectional typed state via request state and `STATE_SNAPSHOT` | `/shared_state` |
-| **Predictive state** | Streamed document edits with accept/reject and rollback | `/predictive_state_updates` |
+| **Predictive state** | Proposed document edits with accept/reject and rollback | `/predictive_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Reasoning** | Reasoning summaries via `REASONING_*` events and a custom activity block | `/reasoning` |
 
@@ -29,7 +29,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 - `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.15.0)
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
-- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.4 — the AG-UI C# SDK)
+- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.6 — the AG-UI C# SDK)
 - `Azure.AI.OpenAI` (2.9.0-beta.1)
 - `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
 - `Aspire` (13.5.3)

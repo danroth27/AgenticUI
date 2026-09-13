@@ -4,7 +4,7 @@ This sample currently uses:
 
 - `Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
-- `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Formatting` / `AGUI.Server` 0.0.4
+- `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Formatting` / `AGUI.Server` 0.0.6
 - `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
 - .NET 11.0.100 RC1 and Aspire 13.5.3
@@ -24,7 +24,7 @@ The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore
 
 ### UI actions are application-controlled
 
-Registering an action creates a `UIActionBlock`, but the components do not invoke it automatically or provide a default renderer. The application must render the block and call `InvokeAsync()` at the appropriate time. This is intentional: an app can run an action immediately or first collect input or confirmation. The [frontend-tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) page invokes its action automatically from a custom renderer, while [predictive state](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveStateUpdates.razor) asks the user to accept or reject proposed document changes.
+Registering an action creates a `UIActionBlock`, but the components do not invoke it automatically or provide a default renderer. The application must render the block and call `InvokeAsync()` at the appropriate time. This is intentional: an app can run an action immediately or first collect input or confirmation. The [frontend-tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) page invokes its action automatically from a custom renderer, while [predictive state](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveState.razor) asks the user to accept or reject proposed document changes.
 
 ### Activity semantics and mapping are application-defined
 
@@ -54,12 +54,17 @@ Receiving `RunAgentInput.State` also does not automatically make that state mode
 
 The components package supports predictive state through `SetPredictiveState`,
 `AcceptPredictiveState`, and `RejectPredictiveState`. The
-[predictive-state scenario](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveStateUpdates.razor)
-streams the model's `write_document_local` tool arguments as predictive `STATE_SNAPSHOT` events,
-shows a diff against the committed document, and lets the user accept or roll back the proposal.
-AG-UI's .NET result mappings support committed state snapshots/deltas, but predictive tool-argument
-mapping still requires application/provider integration rather than a built-in declarative mapping
-([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
+[predictive-state scenario](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveState.razor)
+registers `propose_document` as a frontend UI action. When the completed action call arrives, its
+document argument is mapped to predictive state and displayed as a diff while the action waits for
+the user to accept or reject it. This demonstrates provisional state and rollback without custom
+AG-UI endpoint plumbing.
+
+`AGUI.Server` 0.0.6 can expose provider-native argument fragments as incremental
+`TOOL_CALL_ARGS` events through `MapStreamingToolCallArguments`, but `AGUI.Client` currently
+coalesces those fragments into a completed `FunctionCallContent` before the Blazor state mapper sees
+them. Mapping partial tool arguments directly into predictive state therefore still requires
+application/provider integration ([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
 
 ### Rich text requires a structured tree
 

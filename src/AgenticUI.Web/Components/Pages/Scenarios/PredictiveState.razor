@@ -1,28 +1,27 @@
-@page "/predictive-state-updates"
+@page "/predictive-state"
 @using System.Text.Json
 @inject AgentServerConnection Agents
 @inject ILoggerFactory LoggerFactory
 @implements IDisposable
 
-<PageTitle>Predictive State Updates</PageTitle>
+<PageTitle>Predictive State</PageTitle>
 
 <div class="scenario scenario--workspace">
     <div class="scenario__intro">
-        <h1>Predictive state updates</h1>
+        <h1>Predictive state</h1>
         <p>
-            Collaboratively edit a document while proposed changes stream into the workspace.
-            Accept to commit the prediction, or reject to restore the previous document.
+            Collaboratively edit a document, preview the agent's proposed changes, and then
+            accept them or restore the previous document.
         </p>
     </div>
 
     <AgentBoundary @key="_agent" Agent="_agent">
         <div class="predictive-layout">
-            <section class="document-panel @(_runActive ? "document-panel--streaming" : "")">
+            <section class="document-panel">
                 <DocumentPreview Document="@_agent.State.Value.Document"
                                  BaselineDocument="@_runStartDocument"
                                  IsReadOnly="_runActive"
                                  ShowDiff="_showDiff"
-                                 IsComplete="_candidateComplete"
                                  DocumentChanged="UpdateDocument"
                                  StatusChanged="HandleConversationStatusChanged" />
             </section>
@@ -48,7 +47,7 @@
                             <ChildContent>
                                 <BlockRenderer TBlock="UIActionBlock"
                                                Context="action"
-                                               When="@(block => block.ToolName == "confirm_changes")">
+                                               When="@(block => block.ToolName == "propose_document")">
                                     <ConfirmChangesDialog Block="action" />
                                 </BlockRenderer>
                             </ChildContent>
@@ -76,11 +75,10 @@
     private string _runStartDocument = string.Empty;
     private bool _runActive;
     private bool _showDiff;
-    private bool _candidateComplete;
 
     protected override void OnInitialized()
     {
-        _chatClient = Agents.CreateChatClient("/predictive_state_updates");
+        _chatClient = Agents.CreateChatClient("/predictive_state");
         Reset();
     }
 
@@ -100,47 +98,50 @@
                         _agent.State.Value,
                         s_jsonOptions),
                 },
-                Tools =
-                [
-                    AIFunctionFactory.Create(
-                        WriteDocument,
-                        name: "write_document_local",
-                        description: "Write the full document in Markdown format."),
-                ],
             };
             options.StateMapper = context =>
             {
-                if (context.Update.Contents
+                var proposal = context.Update.Contents
                     .OfType<FunctionCallContent>()
-                    .Any(call => call.Name == "confirm_changes"))
-                {
-                    _candidateComplete = true;
-                    _ = InvokeAsync(StateHasChanged);
-                }
-
-                if (context.Update.RawRepresentation is not StateSnapshotEvent snapshot)
+                    .FirstOrDefault(call => call.Name == "propose_document");
+                if (proposal is null ||
+                    proposal.Arguments?.TryGetValue("document", out var value) != true)
                 {
                     return;
                 }
 
-                var state = snapshot.Snapshot.Deserialize<DocumentState>(s_jsonOptions);
-                if (state is not null)
+                var document = value switch
                 {
-                    context.SetPredictiveState(state);
-                }
+                    string text => text,
+                    JsonElement { ValueKind: JsonValueKind.String } element =>
+                        element.GetString() ?? string.Empty,
+                    _ => value?.ToString() ?? string.Empty,
+                };
+                context.SetPredictiveState(new DocumentState { Document = document });
+                _showDiff = true;
+                _ = InvokeAsync(StateHasChanged);
             };
             options.RegisterUIAction(AIFunctionFactory.Create(
-                ConfirmChanges,
-                name: "confirm_changes",
-                description: "Confirm the document changes with the user."));
+                ProposeDocument,
+                name: "propose_document",
+                description: "Propose a complete Markdown document for the user to accept or reject."));
         }, LoggerFactory, initialState);
     }
 
-    private static string WriteDocument(string document) => "Document written.";
-
-    private string ConfirmChanges(bool accepted = true)
+    private string ProposeDocument(string document, bool? accepted = null)
     {
-        if (accepted)
+        if (!_agent.State.HasPendingPredictiveState ||
+            _agent.State.Value.Document != document)
+        {
+            throw new InvalidOperationException("The document proposal is no longer pending.");
+        }
+
+        if (accepted is null)
+        {
+            throw new InvalidOperationException("The document proposal has not been reviewed.");
+        }
+
+        if (accepted.Value)
         {
             _agent.State.AcceptPredictiveState();
         }
@@ -151,7 +152,7 @@
 
         _showDiff = false;
 
-        return accepted
+        return accepted.Value
             ? "The user confirmed the changes."
             : "The user rejected the changes.";
     }
@@ -169,7 +170,6 @@
         _agent = nextAgent;
         _runStartDocument = string.Empty;
         _showDiff = false;
-        _candidateComplete = false;
         _stateChangedRegistration = _agent.State.OnChanged(
             () => _ = InvokeAsync(StateHasChanged));
     }
@@ -188,14 +188,18 @@
         {
             _runStartDocument = _agent.State.Value.Document;
             _runActive = true;
-            _showDiff = true;
-            _candidateComplete = false;
+            _showDiff = false;
         }
         else if (status is ConversationStatus.Idle or ConversationStatus.Error)
         {
+            if (status == ConversationStatus.Error &&
+                _agent.State.HasPendingPredictiveState)
+            {
+                _agent.State.RejectPredictiveState();
+            }
+
             _runActive = false;
             _showDiff = false;
-            _candidateComplete = false;
             _runStartDocument = _agent.State.Value.Document;
         }
 

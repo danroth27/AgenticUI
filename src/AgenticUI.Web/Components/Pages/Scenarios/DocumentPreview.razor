@@ -42,9 +42,6 @@ else
     public bool ShowDiff { get; set; }
 
     [Parameter]
-    public bool IsComplete { get; set; }
-
-    [Parameter]
     public EventCallback<string> DocumentChanged { get; set; }
 
     [Parameter]
@@ -76,16 +73,7 @@ else
             return HtmlEncoder.Default.Encode(Document);
         }
 
-        var oldTextToCompare = BaselineDocument.Length > Document.Length && !IsComplete
-            ? BaselineDocument[..Document.Length]
-            : BaselineDocument;
-        var parts = DiffWords(oldTextToCompare, Document);
-        if (BaselineDocument.Length > Document.Length && !IsComplete)
-        {
-            parts.Add(new DiffPart(
-                BaselineDocument[Document.Length..],
-                DiffKind.Unchanged));
-        }
+        var parts = DiffWords(BaselineDocument, Document);
 
         return string.Concat(parts.Select(part =>
         {
