@@ -2,7 +2,7 @@
 
 This sample demonstrates how to build rich agentic user experiences with .NET. A **Blazor** chat experience provides a flexible conversational foundation, and the scenarios extend it with tool-driven UI, human approval, shared state, generative UI, and visible reasoning. The backend hosts agents built with the **Microsoft Agent Framework (MAF)**, while the **[AG-UI](https://docs.ag-ui.com) C# SDK** carries messages, actions, and state between the agents and the preview [Blazor AI components](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11#experimental-blazor-ai-components-for-agentic-user-interfaces). [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the application together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
 
-![The Backend Tools page rendering a server tool call as an interactive weather card](docs/images/agentic-ui-weather-card.png)
+![AgenticUI demonstrating frontend tools, human approval, and generative UI](docs/images/agentic-ui.gif)
 
 ## What it demonstrates
 
