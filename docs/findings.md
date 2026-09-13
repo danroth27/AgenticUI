@@ -7,7 +7,7 @@ This sample currently uses:
 - `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Server` 0.0.4
 - `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
-- .NET 11.0.100 RC1 and .NET Aspire 13.5.3
+- .NET 11.0.100 RC1 and Aspire 13.5.3
 
 The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
 

@@ -1,6 +1,6 @@
 # AgenticUI — AG-UI for .NET
 
-A hands-on tour of **AG-UI** (the [Agent User Interaction Protocol](https://docs.ag-ui.com)) in .NET. The backend hosts agents built with the **Microsoft Agent Framework (MAF)** and the **AG-UI C# SDK**; the frontend is a **Blazor** app that consumes them with the new preview Blazor AI components. [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the two together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
+A hands-on tour of **AG-UI** (the [Agent User Interaction Protocol](https://docs.ag-ui.com)) in .NET. The backend hosts agents built with the **Microsoft Agent Framework (MAF)** and the **AG-UI C# SDK**; the frontend is a **Blazor** app that consumes them with the new preview Blazor AI components. [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the two together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
 
 ## What it demonstrates
 
@@ -40,7 +40,7 @@ flowchart LR
 - `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Server` (0.0.4 — the AG-UI C# SDK)
 - `Azure.AI.OpenAI` (2.9.0-beta.1)
 - `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
-- `.NET Aspire` (13.5.3)
+- `Aspire` (13.5.3)
 
 ## Running it
 
@@ -48,7 +48,7 @@ flowchart LR
 
 - [Git](https://git-scm.com/downloads)
 - [.NET 11 RC1 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)
-- [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
+- [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
   `gpt-5-mini` deployment (used for both the general chat and reasoning scenarios).
