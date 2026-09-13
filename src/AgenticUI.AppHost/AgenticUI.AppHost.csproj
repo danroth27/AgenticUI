@@ -13,5 +13,4 @@
     <ProjectReference Include="..\AgenticUI.AgentServer\AgenticUI.AgentServer.csproj" />
     <ProjectReference Include="..\AgenticUI.Web\AgenticUI.Web.csproj" />
   </ItemGroup>
-
 </Project>

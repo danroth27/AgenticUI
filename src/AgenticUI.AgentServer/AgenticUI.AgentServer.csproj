@@ -4,7 +4,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- OPENAI001: OpenAIClient.GetResponsesClient() / AsIChatClient(ResponsesClient) are still
+    <!-- OPENAI001: AzureOpenAIClient.GetResponsesClient() / AsIChatClient(ResponsesClient) are still
          evaluation-only. Everything else this project uses - including the tool-approval APIs and
          ChatOptions.Reasoning - is now stable, so no MEAI001 suppression is needed. -->
     <NoWarn>$(NoWarn);OPENAI001</NoWarn>
@@ -22,7 +22,9 @@
     <!-- AG-UI C# SDK (released by the AG-UI team) -->
     <PackageReference Include="AGUI.Abstractions" Version="0.0.4" />
     <PackageReference Include="AGUI.Server" Version="0.0.4" />
-    <!-- OpenAI client, pointed at the free GitHub Models OpenAI-compatible endpoint -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <!-- OpenAI client APIs used by Microsoft.Agents.AI.OpenAI and Azure.AI.OpenAI -->
     <PackageReference Include="OpenAI" Version="2.10.0" />
   </ItemGroup>
 

@@ -5,8 +5,11 @@ This sample currently uses:
 - `Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
 - `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Server` 0.0.4
+- `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
-- .NET 11.0.100 RC1 and .NET Aspire 13.4
+- .NET 11.0.100 RC1 and Aspire 13.5.3
+
+The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
 
 ## What the sample validates
 
@@ -14,8 +17,8 @@ This sample currently uses:
   HTTP/SSE endpoints, while `AGUIChatClient` presents those endpoints to the Blazor app as standard
   `IChatClient` instances.
 - Streaming chat, generated typed tool blocks, custom block renderers, client UI actions,
-  approve/reject interrupts, AG-UI state snapshots and deltas, reasoning summaries, and in-memory
-  conversation restoration work with the packaged components.
+  approve/reject interrupts, AG-UI state snapshots and deltas, and reasoning summaries work with
+  the packaged components.
 - The deterministic [package-features scenario](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatures.razor)
   separately validates structured `RichTextContent`, a generated typed tool block, a custom
   `ActivityHandler<TBlock>`, committed typed state, `SetPredictiveState`, and both predictive-state
@@ -25,12 +28,7 @@ This sample currently uses:
 
 ### UI actions are application-controlled
 
-Registering an action creates a `UIActionBlock`, but the components do not invoke it automatically or
-provide a default renderer. The application must render the block and call `InvokeAsync()` at the
-appropriate time. This is intentional: an app can run an action immediately or first collect input or
-confirmation. Both the [frontend-tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor)
-and [package-features](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatures.razor) pages use
-explicit renderers.
+Registering an action creates a `UIActionBlock`, but the components do not invoke it automatically or provide a default renderer. The application must render the block and call `InvokeAsync()` at the appropriate time. This is intentional: an app can run an action immediately or first collect input or confirmation. The [frontend-tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) page invokes its action automatically from a custom renderer, while [package-features](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatures.razor) asks the user to accept or reject the proposed action.
 
 ### Activity semantics and mapping are application-defined
 
@@ -76,8 +74,7 @@ integrate a parser. The deterministic client demonstrates direct construction in
 
 ### Persistence and package maturity
 
-The sample's `ConversationThreadStore` is scoped, in-memory validation of `IConversationThread` and
-`RestoreAsync`; it is not durable or multi-instance storage.
+The shared-state scenario's `ConversationThreadStore` keeps conversation threads in memory so the UI can reconnect to the current thread. It is not durable or multi-instance storage.
 
 `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1 and
 `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview are preview packages. Their APIs and
