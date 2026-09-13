@@ -1,4 +1,5 @@
 @page "/agentic-chat"
+@using AgenticUI.Web.Formatting
 @inject AgentServerConnection Agents
 @implements IDisposable
 
@@ -11,7 +12,9 @@
             The simplest AG-UI scenario: a streaming, multi-turn conversation. The Blazor
             <code>&lt;ChatPage&gt;</code> component talks to an <code>IChatClient</code> that is an
             <code>AGUIChatClient</code> pointed at the server's <code>/agentic_chat</code> endpoint.
-            Tokens stream in over Server-Sent Events as AG-UI <code>TEXT_MESSAGE_*</code> events.
+            Tokens stream in over Server-Sent Events as AG-UI <code>TEXT_MESSAGE_*</code> events,
+            then a delegating chat client converts the model's Markdown into structured
+            <code>RichTextContent</code> for safe, incremental rendering.
         </p>
     </div>
 
@@ -26,7 +29,7 @@
 
     protected override void OnInitialized()
     {
-        _chatClient = Agents.CreateChatClient("/agentic_chat");
+        _chatClient = new FormattedChatClient(Agents.CreateChatClient("/agentic_chat"));
         _agent = new UIAgent(_chatClient);
     }
 
