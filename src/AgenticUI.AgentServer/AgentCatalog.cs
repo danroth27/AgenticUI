@@ -181,7 +181,7 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
                 // Keep the answer plain: the Blazor AI components render text, not markdown. Avoid
                 // asking for brevity — instructions like "answer in one or two sentences, no
                 // step-by-step recap" measurably suppress the model's reasoning summary, leaving the
-                // thought-process panel empty.
+                // reasoning-summary panel empty.
                 Instructions = "Write your answer in plain prose. Do not use markdown, LaTeX, math "
                     + "notation, or bullet points.",
                 // Reasoning summaries are opt-in. `ChatOptions.Reasoning` is the provider-neutral
