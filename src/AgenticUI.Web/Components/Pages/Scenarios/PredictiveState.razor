@@ -15,7 +15,7 @@
         </p>
     </div>
 
-    <AgentBoundary @key="_agent" Agent="_agent">
+    <AgentBoundary Agent="_agent">
         <PredictiveStateWorkspace Agent="_agent" ResetRequested="Reset" />
     </AgentBoundary>
 </div>
@@ -55,19 +55,16 @@
                     .OfType<FunctionCallContent>()
                     .FirstOrDefault(call => call.Name == "propose_document");
                 if (proposal is null ||
-                    proposal.Arguments?.TryGetValue("document", out var value) != true)
+                    proposal.Arguments?.TryGetValue("document", out var value) != true ||
+                    value is not JsonElement { ValueKind: JsonValueKind.String } element)
                 {
                     return;
                 }
 
-                var document = value switch
+                context.SetPredictiveState(new DocumentState
                 {
-                    string text => text,
-                    JsonElement { ValueKind: JsonValueKind.String } element =>
-                        element.GetString() ?? string.Empty,
-                    _ => value?.ToString() ?? string.Empty,
-                };
-                context.SetPredictiveState(new DocumentState { Document = document });
+                    Document = element.GetString()!,
+                });
             };
             options.RegisterUIAction(AIFunctionFactory.Create(
                 ReviewDocumentProposal,
