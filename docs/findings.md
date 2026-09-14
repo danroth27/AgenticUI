@@ -70,7 +70,11 @@ MAF/AG-UI can explicitly forward public AG-UI `BaseEvent` values through a respo
 
 `RichTextContent` renders a supplied `RichTextNode` tree, but the package does not include a Markdown parser that creates that tree from model text. Agentic Chat wraps its AG-UI client in [`FormattedChatClient`](../src/AgenticUI.Web/Formatting/FormattedChatClient.cs), which accumulates streaming Markdown and projects it through the sample's [`MarkdownRichTextParser`](../src/AgenticUI.Web/Formatting/MarkdownRichTextParser.cs).
 
-The built-in structured-text renderer is part of `MessageList` and is not exposed as a standalone component for custom blocks. The reasoning scenario therefore displays its provider-generated reasoning summary as plain text. Formatting that summary would currently require the application to duplicate or replace the package's node-rendering logic.
+A custom `ContentBlockHandler<RichContentBlock>` would be a cleaner place for this presentation mapping because it could consume the original `TextContent` without changing the updates retained by `UIAgent`. The current public API does not support that implementation, however: a handler can call `RichContentBlock.AppendText`, but the `Content` setter and `ReplaceContent` method needed to supply parsed nodes are internal. The built-in structured-text renderer is also part of `MessageList` and is not exposed as a standalone component for a custom block.
+
+Consequently, `FormattedChatClient` inserts cumulative `RichTextContent` snapshots into the stream before `UIAgent` processes it. Those presentation snapshots can become part of the agent's internal history alongside the original text content instead of leaving history as compact provider text. The reasoning scenario avoids duplicating the renderer and displays its provider-generated reasoning summary as plain text.
+
+[dotnet/aspnetcore#69266](https://github.com/dotnet/aspnetcore/issues/69266) proposes allowing custom handlers to replace the structured content of `RichContentBlock`. [dotnet/aspnetcore#69265](https://github.com/dotnet/aspnetcore/issues/69265) proposes a finalization callback so handlers can flush buffered transformations before their blocks become inactive. [dotnet/aspnetcore#68418](https://github.com/dotnet/aspnetcore/issues/68418) separately tracks extensible rich-node rendering.
 
 ## Current limitations
 

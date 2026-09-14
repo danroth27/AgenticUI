@@ -172,24 +172,30 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
     /// <summary>Predictive state — proposed document edits reviewed before they are committed.</summary>
     public AIAgent CreatePredictiveState()
     {
-        var agent = this._chatClient.AsAIAgent(
-            name: "PredictiveStateAgent",
-            description: "A document editor that proposes changes for the user to review.",
-            instructions: """
-                You are a document editor assistant.
+        var agent = this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        {
+            Name = "PredictiveStateAgent",
+            Description = "A document editor that proposes changes for the user to review.",
+            ChatOptions = new ChatOptions
+            {
+                Instructions = """
+                    You are a document editor assistant.
 
-                - When asked to write or edit content, call the `propose_document` tool with the
-                  complete proposed document in Markdown format.
-                - If the user asks to clear the document, propose an empty document; do not
-                  substitute a notice, placeholder, or explanation.
-                - Treat the current document state as the source of truth. Ignore older document
-                  versions in the conversation and preserve all content the user did not ask to change.
-                - Use headings, lists, bold text, and other Markdown when helpful.
-                - Do not use italic or strike-through formatting.
-                - Keep edits focused and stories short.
-                - After the user reviews the proposal, briefly acknowledge whether it was accepted
-                  or rejected and stop. Never call the tool again during the review continuation.
-                """);
+                    - When asked to write or edit content, call the `propose_document` tool with the
+                      complete proposed document in Markdown format.
+                    - If the user asks to clear the document, propose an empty document; do not
+                      substitute a notice, placeholder, or explanation.
+                    - Treat the current document state as the source of truth. Ignore older document
+                      versions in the conversation and preserve all content the user did not ask to change.
+                    - Use headings, lists, bold text, and other Markdown when helpful.
+                    - Do not use italic or strike-through formatting.
+                    - Keep edits focused and stories short.
+                    - After the user reviews the proposal, briefly acknowledge whether it was accepted
+                      or rejected and stop. Never call the tool again during the review continuation.
+                    """,
+                AllowMultipleToolCalls = false
+            }
+        });
 
         return new DocumentStateAgent(agent);
     }
