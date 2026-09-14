@@ -1,0 +1,114 @@
+@page "/predictive-state"
+@using System.Text.Json
+@inject AgentServerConnection Agents
+@inject ILoggerFactory LoggerFactory
+@implements IAsyncDisposable
+
+<PageTitle>Predictive State</PageTitle>
+
+<div class="scenario scenario--workspace">
+    <div class="scenario__intro">
+        <h1>Predictive state</h1>
+        <p>
+            Collaboratively edit a document, preview the agent's proposed changes, and then
+            accept them or restore the previous document.
+        </p>
+    </div>
+
+    <AgentBoundary Agent="_agent">
+        <PredictiveStateWorkspace Agent="_agent" ResetRequested="Reset" />
+    </AgentBoundary>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions s_jsonOptions =
+        new(JsonSerializerDefaults.Web);
+
+    private UIAgent<DocumentState> _agent = default!;
+    private IChatClient _chatClient = default!;
+
+    protected override void OnInitialized()
+    {
+        _chatClient = Agents.CreateChatClient("/predictive_state");
+        Reset();
+    }
+
+    private UIAgent<DocumentState> CreateAgent(DocumentState initialState)
+    {
+        var threadId = Guid.NewGuid().ToString("N");
+
+        return new UIAgent<DocumentState>(_chatClient, options =>
+        {
+            options.ChatOptions = new ChatOptions
+            {
+                RawRepresentationFactory = _ => new RunAgentInput
+                {
+                    ThreadId = threadId,
+                    State = JsonSerializer.SerializeToElement(
+                        _agent.State.Value,
+                        s_jsonOptions),
+                },
+            };
+            options.StateMapper = context =>
+            {
+                var proposal = context.Update.Contents
+                    .OfType<FunctionCallContent>()
+                    .FirstOrDefault(call => call.Name == "propose_document");
+                if (proposal is null ||
+                    proposal.Arguments?.TryGetValue("document", out var value) != true ||
+                    value is not JsonElement { ValueKind: JsonValueKind.String } element)
+                {
+                    return;
+                }
+
+                context.SetPredictiveState(new DocumentState
+                {
+                    Document = element.GetString()!,
+                });
+            };
+            options.RegisterUIAction(AIFunctionFactory.Create(
+                ReviewDocumentProposal,
+                name: "propose_document",
+                description: "Propose a complete Markdown document for the user to accept or reject."));
+        }, LoggerFactory, initialState);
+    }
+
+    private string ReviewDocumentProposal(string document, bool? accepted = null)
+    {
+        var isAccepted = accepted ??
+            throw new InvalidOperationException("The document proposal has not been reviewed.");
+
+        if (!_agent.State.HasPendingPredictiveState ||
+            _agent.State.Value.Document != document)
+        {
+            throw new InvalidOperationException("The document proposal is no longer pending.");
+        }
+
+        if (isAccepted)
+        {
+            _agent.State.AcceptPredictiveState();
+        }
+        else
+        {
+            _agent.State.RejectPredictiveState();
+        }
+
+        return isAccepted
+            ? "The user accepted the proposed document. Briefly acknowledge the acceptance and stop."
+            : "The user rejected the proposed document. Briefly acknowledge the rejection and stop without proposing another document.";
+    }
+
+    private void Reset()
+    {
+        var nextAgent = CreateAgent(new DocumentState());
+        _agent?.Dispose();
+        _agent = nextAgent;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _agent?.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

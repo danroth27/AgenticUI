@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft. All rights reserved.
-
 using System.ComponentModel;
 
 namespace AgenticUI.AgentServer.Scenarios.AgenticGenerativeUi;

@@ -1,0 +1,132 @@
+@implements IAsyncDisposable
+
+<div class="predictive-layout">
+    <section class="document-panel">
+        <DocumentEditor Document="@Agent.State.Value.Document"
+                        BaselineDocument="@_runStartDocument"
+                        IsReadOnly="IsRunning"
+                        ShowDiff="@Agent.State.HasPendingPredictiveState"
+                        DocumentChanged="UpdateDocument" />
+    </section>
+    <aside class="predictive-chat">
+        <header class="workspace-chat__header">
+            <div>
+                <span class="workspace-chat__label">Copilot</span>
+                <h2>AI document editor</h2>
+            </div>
+            <button class="workspace-chat__reset"
+                    aria-label="Reset document"
+                    disabled="@IsRunning"
+                    @onclick="ResetAsync">&times;</button>
+        </header>
+        <div class="sc-ai-root sc-ai-chat-page predictive-chat-panel">
+            <div class="sc-ai-chat-page__body">
+                <MessageList>
+                    <EmptyContent>
+                        <p class="predictive-chat__welcome">
+                            Write directly or ask the agent to propose an edit.
+                        </p>
+                    </EmptyContent>
+                    <ChildContent>
+                        <BlockRenderer TBlock="UIActionBlock"
+                                       Context="action"
+                                       When="@(block => block.ToolName == "propose_document")">
+                            <ConfirmChangesDialog Block="action" />
+                        </BlockRenderer>
+                    </ChildContent>
+                </MessageList>
+            </div>
+            <DocumentSuggestions Disabled="IsRunning"
+                                 SuggestionSelected="SendSuggestionAsync" />
+            <div class="sc-ai-chat-page__footer">
+                <div class="sc-ai-chat-page__input-container">
+                    <MessageInput Placeholder="Describe an edit..." />
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+@code {
+    private IDisposable? _stateChangedRegistration;
+    private IDisposable? _statusChangedRegistration;
+    private string _runStartDocument = string.Empty;
+    private ConversationStatus _lastStatus;
+
+    [CascadingParameter]
+    public AgentContext AgentContext { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public UIAgent<DocumentState> Agent { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback ResetRequested { get; set; }
+
+    private bool IsRunning => IsRunningStatus(AgentContext.Status);
+
+    protected override void OnInitialized()
+    {
+        _runStartDocument = Agent.State.Value.Document;
+        _lastStatus = AgentContext.Status;
+        _stateChangedRegistration = Agent.State.OnChanged(HandleStateChanged);
+        _statusChangedRegistration =
+            AgentContext.RegisterOnStatusChanged(HandleConversationStatusChanged);
+    }
+
+    private void UpdateDocument(string document)
+    {
+        if (!IsRunning)
+        {
+            Agent.State.Value = new DocumentState { Document = document };
+        }
+    }
+
+    private Task ResetAsync() => ResetRequested.InvokeAsync();
+
+    private Task SendSuggestionAsync(string prompt) =>
+        AgentContext.SendMessageAsync(prompt);
+
+    private async void HandleStateChanged()
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception exception)
+        {
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    private async void HandleConversationStatusChanged(ConversationStatus status)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (status == ConversationStatus.Streaming &&
+                    !IsRunningStatus(_lastStatus))
+                {
+                    _runStartDocument = Agent.State.Value.Document;
+                }
+
+                _lastStatus = status;
+                StateHasChanged();
+            });
+        }
+        catch (Exception exception)
+        {
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    private static bool IsRunningStatus(ConversationStatus status) =>
+        status is ConversationStatus.Streaming or ConversationStatus.AwaitingInput;
+
+    public ValueTask DisposeAsync()
+    {
+        _stateChangedRegistration?.Dispose();
+        _statusChangedRegistration?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

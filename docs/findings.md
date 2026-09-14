@@ -1,81 +1,85 @@
-# Current findings
+# Findings
 
-This sample currently uses:
+## Tested stack
 
-- `Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` 1.15.0
+The sample currently uses:
+
+- .NET 11 RC1 and Aspire 13.5.3
+- `Microsoft.Agents.AI.OpenAI` and `Microsoft.Agents.AI.Workflows` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
-- `AGUI.Client` / `AGUI.Abstractions` / `AGUI.Server` 0.0.4
+- `AGUI.Client` and `AGUI.Server` 0.0.6
 - `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
-- .NET 11.0.100 RC1 and Aspire 13.5.3
 
-The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
+The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version available on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
 
-## What the sample validates
+## Validated capabilities
 
-- `AddAGUIServer()` and `MapAGUIServer()` expose Microsoft Agent Framework (MAF) agents as AG-UI
-  HTTP/SSE endpoints, while `AGUIChatClient` presents those endpoints to the Blazor app as standard
-  `IChatClient` instances.
-- Streaming chat, generated typed tool blocks, custom block renderers, client UI actions,
-  approve/reject interrupts, AG-UI state snapshots and deltas, and reasoning summaries work with
-  the packaged components.
-- The deterministic [package-features scenario](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatures.razor)
-  separately validates structured `RichTextContent`, a generated typed tool block, a custom
-  `ActivityHandler<TBlock>`, committed typed state, `SetPredictiveState`, and both predictive-state
-  acceptance and rejection/rollback.
+`AddAGUIServer()` and `MapAGUIServer()` expose Microsoft Agent Framework agents as AG-UI HTTP/SSE endpoints, while `AGUIChatClient` presents those endpoints to the Blazor app as standard `IChatClient` instances.
 
-## Current design boundaries and limitations
+The scenarios validate:
 
-### UI actions are application-controlled
+- Streaming, multi-turn chat rendered as structured rich text
+- Server tools mapped to generated typed blocks and custom renderers
+- Frontend UI actions with either automatic invocation or explicit user confirmation
+- Approve/reject interrupts
+- Bidirectional editable state through AG-UI state snapshots
+- Live plans through state snapshots and JSON Patch state deltas
+- Predictive state with diff preview, acceptance, rejection, and rollback
+- Reasoning summaries rendered through a custom activity block
 
-Registering an action creates a `UIActionBlock`, but the components do not invoke it automatically or provide a default renderer. The application must render the block and call `InvokeAsync()` at the appropriate time. This is intentional: an app can run an action immediately or first collect input or confirmation. The [frontend-tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) page invokes its action automatically from a custom renderer, while [package-features](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatures.razor) asks the user to accept or reject the proposed action.
+## Integration findings
 
-### Activity semantics and mapping are application-defined
+### UI actions remain application-controlled
 
-`ActivityHandler<TBlock>` is an extensibility point, not an AG-UI activity implementation. The
-application decides which incoming `AIContent` starts, updates, and completes an activity and how its
-content is rendered. The .NET packages do not currently include an AG-UI `ACTIVITY_SNAPSHOT` /
-`ACTIVITY_DELTA` handler or a built-in JSON Patch activity mapper; this sample's
-[verification](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatureChatClient.cs) and
-[reasoning](../src/AgenticUI.Web/Components/Pages/Scenarios/ReasoningActivityBlock.cs) handlers are
-application code.
+Registering a UI action creates a `UIActionBlock`, but the components do not invoke it automatically or supply a default renderer. The application renders the block and decides when to call `InvokeAsync()`. This supports both automatic actions and actions that first collect input or confirmation.
 
-MAF/AG-UI can explicitly forward public AG-UI `BaseEvent` values through a response update's raw
-representation. It does not, however, automatically translate MAF workflow lifecycle events into
-AG-UI activity snapshots or deltas. Workflow agents therefore stream their ordinary agent output
-unless the application adds that mapping. Automatic workflow event projection remains tracked in
-[microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494).
+The [frontend tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) scenario invokes its action automatically from a custom renderer. The [predictive state](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveState.razor) scenario instead presents an accept/reject dialog and adds the user's decision to the pending action arguments before invoking it.
 
-### State mapping is explicit
+### State transport, model context, and UI projection are separate concerns
 
-The Blazor components expose an inbound `StateMapper`, but the application must interpret protocol
-updates and choose `SetState` or `SetPredictiveState`. The shared-state scenario directly
-deserializes its `StateSnapshotEvent`, while the plan scenario applies the specific
-`StateDeltaEvent` replace operations emitted by its `update_plan_step` tool.
+`UIAgent<TState>` does not automatically send its current state as `RunAgentInput.State`. `AGUIChatClient` can forward state supplied through `ChatOptions.RawRepresentationFactory`, so applications that need bidirectional editable state must explicitly add that outbound mapping. Local edits remain client-side until the next agent request.
 
-`UIAgent<TState>` does not automatically send its current state as `RunAgentInput.State`. `AGUIChatClient` can forward state supplied through `ChatOptions.RawRepresentationFactory`, but applications that need bidirectional editable state must add that outbound mapping. Local edits remain client-side until the next agent request.
+Receiving `RunAgentInput.State` also does not automatically add it to the model context. The shared-state and predictive-state agents use `TryGetRunAgentInput` and insert the current state immediately before the latest user request. Placing it before older tool results can allow stale conversation content to override the user's local edits.
 
-Receiving `RunAgentInput.State` also does not automatically make that state model context. A delegating agent or chat client can recover the originating input with `TryGetRunAgentInput` and explicitly project the state into the messages sent to the model. When sending the full conversation history, current state must be placed immediately before the latest user request; placing it before older tool results can let a stale snapshot override the user's local edits.
+Inbound state projection is also explicit. The shared-state scenario deserializes `StateSnapshotEvent` into its typed state, while the plan scenario applies the specific `StateDeltaEvent` replace operations emitted by `update_plan_step`.
 
-The components package does support predictive state. The package-features scenario confirms
-`SetPredictiveState`, `AcceptPredictiveState`, and `RejectPredictiveState` rollback. That scenario
-uses a deterministic local `IChatClient`; it does not claim that AG-UI automatically derives
-predictive snapshots from streaming tool arguments. AG-UI's .NET result mappings support committed
-state snapshots/deltas, but predictive tool-argument mapping still requires application/provider
-integration rather than a built-in declarative mapping
-([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
+### Predictive state requires explicit mapping and resolution
+
+Registering `propose_document` as a frontend action does not make its argument predictive state. The predictive-state scenario maps the completed action's `document` argument with `SetPredictiveState`, then resolves that pending state with `AcceptPredictiveState` or `RejectPredictiveState` after the user reviews the diff.
+
+With `AGUI.Client` 0.0.6, the completed action arguments are deserialized into `IDictionary<string, object?>`; a JSON string argument arrives at the state mapper as a string-valued `JsonElement`. The scenario validates that representation rather than supporting an unobserved CLR `string` alternative.
+
+`AgentContext` rejects pending predictive state before publishing `Idle` or `Error`, so application code does not need a second completion-time rollback. Application-level validation is still useful before accepting or rejecting because the state APIs otherwise silently do nothing when no prediction is pending.
+
+`AGUI.Server` 0.0.6 can expose provider-native argument fragments as incremental `TOOL_CALL_ARGS` events through `MapStreamingToolCallArguments`, but `AGUI.Client` coalesces those fragments into a completed `FunctionCallContent` before the Blazor state mapper sees them. Mapping partial tool arguments directly into predictive state still requires application or provider integration ([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
+
+### Component lifetime is handled by `AgentBoundary`
+
+When its `Agent` parameter changes, `AgentBoundary` disposes the previous `AgentContext`, creates a new one, and recreates its descendants through an internally keyed render region. An additional `@key` on `AgentBoundary` is unnecessary; reset behavior was verified both with and without it.
+
+Presentation components do not need direct access to `AgentContext`. In the predictive-state scenario, the workspace owns status handling and message dispatch while the document editor and suggestion list communicate through parameters and callbacks.
+
+### Activity semantics and rendering are application-defined
+
+`ActivityHandler<TBlock>` is an extensibility point, not an AG-UI activity implementation. The application decides which incoming `AIContent` starts, updates, and completes an activity and how that activity is rendered. The packages do not currently include an AG-UI `ACTIVITY_SNAPSHOT` / `ACTIVITY_DELTA` handler or a built-in JSON Patch activity mapper; the sample's [reasoning handler](../src/AgenticUI.Web/Components/Pages/Scenarios/ReasoningActivityBlock.cs) is application code.
+
+MAF/AG-UI can explicitly forward public AG-UI `BaseEvent` values through a response update's raw representation, but it does not automatically translate MAF workflow lifecycle events into AG-UI activity snapshots or deltas. Workflow agents therefore stream their ordinary output unless the application adds that mapping. Automatic workflow event projection remains tracked in [microsoft/agent-framework#2494](https://github.com/microsoft/agent-framework/issues/2494).
 
 ### Rich text requires a structured tree
 
-`RichTextContent` renders a supplied `RichTextNode` tree, but the package does not include a Markdown
-parser that creates that tree from model text. Applications must construct the nodes themselves or
-integrate a parser. The deterministic client demonstrates direct construction in
-[`RichUpdate`](../src/AgenticUI.Web/Components/Pages/Scenarios/PackageFeatureChatClient.cs).
+`RichTextContent` renders a supplied `RichTextNode` tree, but the package does not include a Markdown parser that creates that tree from model text. Agentic Chat wraps its AG-UI client in [`FormattedChatClient`](../src/AgenticUI.Web/Formatting/FormattedChatClient.cs), which accumulates streaming Markdown and projects it through the sample's [`MarkdownRichTextParser`](../src/AgenticUI.Web/Formatting/MarkdownRichTextParser.cs).
 
-### Persistence and package maturity
+A custom `ContentBlockHandler<RichContentBlock>` would be a cleaner place for this presentation mapping because it could consume the original `TextContent` without changing the updates retained by `UIAgent`. The current public API does not support that implementation, however: a handler can call `RichContentBlock.AppendText`, but the `Content` setter and `ReplaceContent` method needed to supply parsed nodes are internal. The built-in structured-text renderer is also part of `MessageList` and is not exposed as a standalone component for a custom block.
 
-The shared-state scenario's `ConversationThreadStore` keeps conversation threads in memory so the UI can reconnect to the current thread. It is not durable or multi-instance storage.
+Consequently, `FormattedChatClient` inserts cumulative `RichTextContent` snapshots into the stream before `UIAgent` processes it. Those presentation snapshots can become part of the agent's internal history alongside the original text content instead of leaving history as compact provider text. The reasoning scenario avoids duplicating the renderer and displays its provider-generated reasoning summary as plain text.
 
-`Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1 and
-`Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview are preview packages. Their APIs and
-hosting behavior may change before stable releases.
+[dotnet/aspnetcore#69266](https://github.com/dotnet/aspnetcore/issues/69266) proposes allowing custom handlers to replace the structured content of `RichContentBlock`. [dotnet/aspnetcore#69265](https://github.com/dotnet/aspnetcore/issues/69265) proposes a finalization callback so handlers can flush buffered transformations before their blocks become inactive. [dotnet/aspnetcore#68418](https://github.com/dotnet/aspnetcore/issues/68418) separately tracks extensible rich-node rendering.
+
+## Current limitations
+
+The sample creates one stable AG-UI thread ID for each `UIAgent`; reset creates a new agent and thread. It has no application-level durable conversation store, so it does not demonstrate persistence across page instances, server restarts, or multiple server instances.
+
+After a rejected predictive-state proposal, the model can sometimes issue another proposal despite being instructed to acknowledge the rejection and stop. State rollback works correctly, but reliably preventing the repeated tool call would require targeted tool suppression or a client-only completion path rather than prompt instructions alone.
+
+`Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1 and `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview are preview packages. Their APIs and hosting behavior may change before stable releases.

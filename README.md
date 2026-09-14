@@ -1,6 +1,6 @@
 # Building agentic UI with .NET
 
-This sample demonstrates how to build rich agentic user experiences with .NET. A **Blazor** chat experience provides a flexible conversational foundation, and the scenarios extend it with tool-driven UI, human approval, shared state, generative UI, and visible reasoning. The backend hosts agents built with the **Microsoft Agent Framework (MAF)**, while the **[AG-UI](https://docs.ag-ui.com) C# SDK** carries messages, actions, and state between the agents and the preview [Blazor AI components](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11#experimental-blazor-ai-components-for-agentic-user-interfaces). [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the application together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
+This sample demonstrates how to build rich agentic user experiences with .NET. A **Blazor** chat experience provides a flexible conversational foundation, and the scenarios extend it with structured rich text, tool-driven UI, human approval, shared and predictive state, generative UI, and visible reasoning. The backend hosts agents built with the **Microsoft Agent Framework (MAF)**, while the **[AG-UI](https://docs.ag-ui.com) C# SDK** carries messages, actions, and state between the agents and the preview [Blazor AI components](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11#experimental-blazor-ai-components-for-agentic-user-interfaces). [Aspire](https://learn.microsoft.com/dotnet/aspire/) wires the application together, and the agents use **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/)** for model inference.
 
 ![AgenticUI demonstrating frontend tools, human approval, and generative UI](docs/images/agentic-ui.gif)
 
@@ -8,14 +8,14 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 | Scenario | AG-UI feature | Endpoint |
 | --- | --- | --- |
-| **Agentic chat** | Streaming, multi-turn chat (`TEXT_MESSAGE_*`) | `/agentic_chat` |
+| **Agentic chat** | Streaming, multi-turn chat (`TEXT_MESSAGE_*`) rendered as structured rich text | `/agentic_chat` |
 | **Backend tools** | Server-side tool calls (`TOOL_CALL_*`) mapped to a generated typed block and custom card | `/backend_tool_rendering` |
 | **Frontend tools** | Client-side UI action automatically invoked from a custom renderer | `/tool_based_generative_ui` |
 | **Human in the loop** | Tool approval interrupt → Approve / Reject → resume | `/human_in_the_loop` |
 | **Shared state** | Bidirectional typed state via request state and `STATE_SNAPSHOT` | `/shared_state` |
+| **Predictive state** | Proposed document edits with accept/reject and rollback | `/predictive_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Reasoning** | Reasoning summaries via `REASONING_*` events and a custom activity block | `/reasoning` |
-| **Package features** | Deterministic rich text, typed tool blocks, activities, state, and predictive accept/reject/rollback | Local `IChatClient` |
 
 ## Architecture
 
@@ -29,7 +29,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 - `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.15.0)
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
-- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Server` (0.0.4 — the AG-UI C# SDK)
+- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.6 — the AG-UI C# SDK)
 - `Azure.AI.OpenAI` (2.9.0-beta.1)
 - `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
 - `Aspire` (13.5.3)
