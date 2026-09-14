@@ -110,17 +110,6 @@
                     _runStartDocument = Agent.State.Value.Document;
                 }
 
-                if (status == ConversationStatus.Error &&
-                    Agent.State.HasPendingPredictiveState)
-                {
-                    Agent.State.RejectPredictiveState();
-                }
-
-                if (status is ConversationStatus.Idle or ConversationStatus.Error)
-                {
-                    _runStartDocument = Agent.State.Value.Document;
-                }
-
                 _lastStatus = status;
                 StateHasChanged();
             });

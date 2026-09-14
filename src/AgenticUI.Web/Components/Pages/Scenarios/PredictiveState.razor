@@ -75,18 +75,16 @@
 
     private string ReviewDocumentProposal(string document, bool? accepted = null)
     {
+        var isAccepted = accepted ??
+            throw new InvalidOperationException("The document proposal has not been reviewed.");
+
         if (!_agent.State.HasPendingPredictiveState ||
             _agent.State.Value.Document != document)
         {
             throw new InvalidOperationException("The document proposal is no longer pending.");
         }
 
-        if (accepted is null)
-        {
-            throw new InvalidOperationException("The document proposal has not been reviewed.");
-        }
-
-        if (accepted.Value)
+        if (isAccepted)
         {
             _agent.State.AcceptPredictiveState();
         }
@@ -95,7 +93,7 @@
             _agent.State.RejectPredictiveState();
         }
 
-        return accepted.Value
+        return isAccepted
             ? "The user accepted the proposed document. Briefly acknowledge the acceptance and stop."
             : "The user rejected the proposed document. Briefly acknowledge the rejection and stop without proposing another document.";
     }
