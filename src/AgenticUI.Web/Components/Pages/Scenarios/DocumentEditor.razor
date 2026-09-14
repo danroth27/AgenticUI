@@ -62,8 +62,23 @@ else
 
     private static List<DiffPart> DiffWords(string oldText, string newText)
     {
+        const long MaxDiffCells = 1_000_000;
+
         var oldTokens = Regex.Split(oldText, @"(\s+)").Where(value => value.Length > 0).ToArray();
         var newTokens = Regex.Split(newText, @"(\s+)").Where(value => value.Length > 0).ToArray();
+        var cellCount =
+            ((long)oldTokens.Length + 1) *
+            ((long)newTokens.Length + 1);
+
+        if (cellCount > MaxDiffCells)
+        {
+            return
+            [
+                new DiffPart(oldText, DiffKind.Removed),
+                new DiffPart(newText, DiffKind.Added),
+            ];
+        }
+
         var lengths = new int[oldTokens.Length + 1, newTokens.Length + 1];
 
         for (var oldIndex = oldTokens.Length - 1; oldIndex >= 0; oldIndex--)
