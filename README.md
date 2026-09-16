@@ -31,7 +31,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
 - `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.6 — the AG-UI C# SDK)
 - `Azure.AI.OpenAI` (2.9.0-beta.1)
-- `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
+- `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26466.103)
 - `Aspire` (13.5.3)
 
 ## Running it
