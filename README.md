@@ -25,15 +25,6 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a standard `IChatClient`. UI is rendered with the Blazor AI components (`ChatPage`, `MessageList`, `BlockRenderer`, `UIAgent<TState>`, …).
 - **`AgenticUI.AppHost` / `AgenticUI.ServiceDefaults`** — Aspire orchestration and service discovery.
 
-### Packages used
-
-- `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.15.0)
-- `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
-- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (0.0.6 — the AG-UI C# SDK)
-- `Azure.AI.OpenAI` (2.9.0-beta.1)
-- `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26466.103)
-- `Aspire` (13.5.3)
-
 ## Running it
 
 ### Prerequisites
