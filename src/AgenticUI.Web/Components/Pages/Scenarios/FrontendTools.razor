@@ -8,9 +8,9 @@
     <div class="scenario__intro">
         <h1>Frontend tools</h1>
         <p>
-            A <strong>client-side</strong> tool runs in the browser, not on the server. We register a
-            <code>set_accent_color</code> UI action with the <code>UIAgent</code>; the model calls it and
-            the Blazor app executes it locally to restyle this page. Try:
+            A <strong>client-side</strong> tool runs in the Blazor app, not on the agent server. We add
+            <code>set_accent_color</code> to <code>ChatOptions.Tools</code>; the model calls it and the
+            AG-UI client executes it locally to restyle this page. Try:
             <em>"Change the accent color to rebeccapurple."</em>
         </p>
     </div>
@@ -25,10 +25,19 @@
         <div class="scenario__chat">
             <ChatPage Agent="_agent" Placeholder="Ask me to change the accent color…">
                 <MessageListContent>
-                    <BlockRenderer TBlock="UIActionBlock"
-                                   When='action => action.ToolName == "set_accent_color"'
-                                   Context="action">
-                        <AutoInvokeAction Action="action" />
+                    <BlockRenderer TBlock="AccentColorToolBlock"
+                                   When='block => block.ToolName == "set_accent_color"'
+                                   Context="block">
+                        <div class="ui-action-chip">
+                            @if (block.HasResult)
+                            {
+                                <text>🎨 ran <code>@block.ToolName</code> in the Blazor app</text>
+                            }
+                            else
+                            {
+                                <text>🎨 running <code>@block.ToolName</code> in the Blazor app…</text>
+                            }
+                        </div>
                     </BlockRenderer>
                 </MessageListContent>
             </ChatPage>
@@ -58,8 +67,16 @@
             name: "set_accent_color",
             description: "Set the accent color of the page. Accepts any CSS color (name or hex).");
 
-        _agent = new UIAgent(_chatClient, options => options.RegisterUIAction(setAccentColor));
+        _agent = new UIAgent(_chatClient, options =>
+        {
+            options.ChatOptions = new ChatOptions { Tools = [setAccentColor] };
+            options.AddGeneratedToolBlocks();
+        });
     }
 
-    public void Dispose() => (_chatClient as IDisposable)?.Dispose();
+    public void Dispose()
+    {
+        _agent.Dispose();
+        (_chatClient as IDisposable)?.Dispose();
+    }
 }

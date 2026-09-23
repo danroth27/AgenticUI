@@ -7,7 +7,7 @@ The sample currently uses:
 - .NET 11 RC1 and Aspire 13.5.3
 - `Microsoft.Agents.AI.OpenAI` and `Microsoft.Agents.AI.Workflows` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
-- `AGUI.Client` and `AGUI.Server` 0.0.6
+- `AGUI.Client` and `AGUI.Server` 1.0.0
 - `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
 
@@ -21,7 +21,8 @@ The scenarios validate:
 
 - Streaming, multi-turn chat rendered as structured rich text
 - Server tools mapped to generated typed blocks and custom renderers
-- Frontend UI actions with either automatic invocation or explicit user confirmation
+- Automatically invoked frontend tools rendered with generated typed blocks
+- Interactive UI actions that wait for explicit user confirmation
 - Approve/reject interrupts
 - Bidirectional editable state through AG-UI state snapshots
 - Live plans through state snapshots and JSON Patch state deltas
@@ -30,11 +31,13 @@ The scenarios validate:
 
 ## Integration findings
 
-### UI actions remain application-controlled
+### Automatic tools and interactive UI actions use separate paths
 
-Registering a UI action creates a `UIActionBlock`, but the components do not invoke it automatically or supply a default renderer. The application renders the block and decides when to call `InvokeAsync()`. This supports both automatic actions and actions that first collect input or confirmation.
+`AGUIChatClient` 1.0.0 includes a `FunctionInvokingChatClient` and automatically invokes executable frontend tools supplied through `ChatOptions.Tools`. Their calls and results are ordinary tool content, so the Blazor AI components can map them to `FunctionInvocationContentBlock` instances or generated typed blocks.
 
-The [frontend tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) scenario invokes its action automatically from a custom renderer. The [predictive state](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveState.razor) scenario instead presents an accept/reject dialog and adds the user's decision to the pending action arguments before invoking it.
+The [frontend tools](../src/AgenticUI.Web/Components/Pages/Scenarios/FrontendTools.razor) scenario uses this automatic path for `set_accent_color` and renders the call and result with `AccentColorToolBlock`.
+
+Registering a function with `RegisterUIAction` instead creates a `UIActionBlock` and pauses the interaction until application UI calls `InvokeAsync()`. Use this path when the UI or user must provide input before the agent can continue. The [predictive state](../src/AgenticUI.Web/Components/Pages/Scenarios/PredictiveState.razor) scenario presents an accept/reject dialog and adds the user's decision to the pending action arguments before invoking it.
 
 ### State transport, model context, and UI projection are separate concerns
 
@@ -48,11 +51,11 @@ Inbound state projection is also explicit. The shared-state scenario deserialize
 
 Registering `propose_document` as a frontend action does not make its argument predictive state. The predictive-state scenario maps the completed action's `document` argument with `SetPredictiveState`, then resolves that pending state with `AcceptPredictiveState` or `RejectPredictiveState` after the user reviews the diff.
 
-With `AGUI.Client` 0.0.6, the completed action arguments are deserialized into `IDictionary<string, object?>`; a JSON string argument arrives at the state mapper as a string-valued `JsonElement`. The scenario validates that representation rather than supporting an unobserved CLR `string` alternative.
+With `AGUI.Client` 1.0.0, the completed action arguments are deserialized into `IDictionary<string, object?>`; a JSON string argument arrives at the state mapper as a string-valued `JsonElement`. The scenario validates that representation rather than supporting an unobserved CLR `string` alternative.
 
 `AgentContext` rejects pending predictive state before publishing `Idle` or `Error`, so application code does not need a second completion-time rollback. Application-level validation is still useful before accepting or rejecting because the state APIs otherwise silently do nothing when no prediction is pending.
 
-`AGUI.Server` 0.0.6 can expose provider-native argument fragments as incremental `TOOL_CALL_ARGS` events through `MapStreamingToolCallArguments`, but `AGUI.Client` coalesces those fragments into a completed `FunctionCallContent` before the Blazor state mapper sees them. Mapping partial tool arguments directly into predictive state still requires application or provider integration ([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
+`AGUI.Server` 1.0.0 can expose provider-native argument fragments as incremental `TOOL_CALL_ARGS` events through `MapStreamingToolCallArguments`, but `AGUI.Client` coalesces those fragments into a completed `FunctionCallContent` before the Blazor state mapper sees them. Mapping partial tool arguments directly into predictive state still requires application or provider integration ([ag-ui#2245](https://github.com/ag-ui-protocol/ag-ui/issues/2245)).
 
 ### Component lifetime is handled by `AgentBoundary`
 
