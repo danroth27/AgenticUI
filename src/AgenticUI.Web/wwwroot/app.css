@@ -155,6 +155,10 @@ ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item::before {
     left: -1.1rem;
 }
 
+/* Explicit glyphs avoid missing native disclosure markers in some browsers. */
+.sc-ai-reasoning > summary::marker { content: "\25B6  "; }
+.sc-ai-reasoning[open] > summary::marker { content: "\25BC  "; }
+
 @media (max-width: 640.98px) {
     .scenario { min-height: 32rem; }
     .scenario__split { grid-template-columns: 1fr; }

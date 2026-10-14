@@ -38,7 +38,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 ### Prerequisites
 
-- [.NET 11 RC1 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)
+- [.NET 11 RC2 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) (`11.0.100-rc.2.26504.105`, selected by `global.json`)
 - [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a

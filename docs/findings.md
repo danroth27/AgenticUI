@@ -4,14 +4,14 @@
 
 The sample currently uses:
 
-- .NET 11 RC1 and Aspire 13.5.3
+- .NET 11 RC2 and Aspire 13.5.3
 - `Microsoft.Agents.AI.OpenAI` and `Microsoft.Agents.AI.Workflows` 1.15.0
 - `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
 - `AGUI.Client` and `AGUI.Server` 1.0.0
 - `Azure.AI.OpenAI` 2.9.0-beta.1
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
 
-The Components AI preview declares a dependency on a newer `Microsoft.AspNetCore.Components.Web` package. The web project pins that transitive dependency to the .NET 11 RC1 version available on NuGet.org and uses the ASP.NET Core shared framework at build and run time, avoiding custom package feeds.
+The web project explicitly references the .NET 11 RC2 `Microsoft.AspNetCore.Components.Web` package with its assets excluded, so the Components AI preview uses the ASP.NET Core shared framework at build and run time. The SDK is selected by the repository's `global.json`.
 
 ## Validated capabilities
 
