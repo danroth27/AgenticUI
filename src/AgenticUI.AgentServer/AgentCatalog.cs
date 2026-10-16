@@ -14,7 +14,15 @@ namespace AgenticUI.AgentServer;
 /// Builds the <see cref="AIAgent"/> instances for each AG-UI demo scenario. Each agent is mapped to
 /// its own AG-UI endpoint in <c>Program.cs</c> via <c>MapAGUIServer</c>.
 /// </summary>
-public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningChatClient)
+/// <param name="chatClient">The chat-completions client for the general scenarios.</param>
+/// <param name="reasoningChatClient">The Responses client for the reasoning scenario.</param>
+/// <param name="chatModelSupportsReasoningEffort">
+/// Whether <paramref name="chatClient"/>'s model accepts the <c>reasoning_effort</c> option.
+/// </param>
+public sealed class AgentCatalog(
+    ChatClient chatClient,
+    IChatClient reasoningChatClient,
+    bool chatModelSupportsReasoningEffort)
 {
     private readonly ChatClient _chatClient = chatClient;
     private readonly IChatClient _reasoningChatClient = reasoningChatClient;
@@ -25,6 +33,47 @@ public sealed class AgentCatalog(ChatClient chatClient, IChatClient reasoningCha
             name: "AgenticChat",
             description: "A simple streaming chat agent.",
             instructions: "You are a helpful, friendly assistant. Keep answers concise.");
+
+    /// <summary>
+    /// Real-time voice chat — the reply is spoken aloud by Deepgram Flux TTS, so the instructions ask
+    /// for short, plain spoken language instead of Markdown. The web app rewrites any reply the user
+    /// talked over to what they actually heard, ending in an "[interrupted by the user]" marker.
+    /// </summary>
+    public AIAgent CreateVoiceChat() =>
+        this._chatClient.AsAIAgent(new ChatClientAgentOptions
+        {
+            Name = "VoiceChat",
+            Description = "A conversational voice assistant whose replies are spoken aloud.",
+            ChatOptions = new ChatOptions
+            {
+                Instructions = """
+                    You are a friendly voice assistant. Everything you write is converted to speech and
+                    played aloud, so write for the ear, not the eye.
+                    - Answer in one to three short, natural sentences unless the user asks for more.
+                    - Use plain spoken language only: no Markdown, headings, bullet points, tables, code
+                      blocks, emoji, or URLs.
+                    - Say symbols, abbreviations, and numbers the way a person would speak them.
+                    - When a topic needs more, give the most useful part first and offer to go on.
+                    - Adapt to the user's tone and emotional level. You receive a transcript of their
+                      speech, so read their mood from their words and phrasing: match a casual or
+                      playful user with a lighter tone, stay calm and steady with someone who sounds
+                      frustrated or upset, acknowledge strong feelings briefly before helping, and
+                      keep things brisk with someone who sounds hurried.
+                    - The user can interrupt you. If one of your earlier replies ends with
+                      "[interrupted by the user]", they heard only the text before that marker, so don't
+                      assume they heard the rest; respond to their newest message.
+                    """,
+
+                // In a voice conversation the model's silent thinking time is dead air. With a
+                // reasoning model such as gpt-5-mini, "minimal" effort roughly halves the time to the
+                // first token compared with the default. Microsoft.Extensions.AI's ReasoningEffort has
+                // no Minimal value (None maps to "none", Low to "low"), so it's set on the OpenAI
+                // request options directly, and only for models that accept the option.
+                RawRepresentationFactory = chatModelSupportsReasoningEffort
+                    ? _ => new ChatCompletionOptions { ReasoningEffortLevel = ChatReasoningEffortLevel.Minimal }
+                    : null,
+            },
+        });
 
     /// <summary>Backend tool rendering — the server executes a <c>get_weather</c> tool.</summary>
     public AIAgent CreateBackendToolRendering() =>

@@ -21,10 +21,11 @@ app.MapDefaultEndpoints();
 var foundry = Foundry.ReadOptions(app.Configuration);
 var chatClient = Foundry.CreateChatClient(foundry);
 var reasoningChatClient = Foundry.CreateReasoningChatClient(foundry);
-var agents = new AgentCatalog(chatClient, reasoningChatClient);
+var agents = new AgentCatalog(chatClient, reasoningChatClient, Foundry.SupportsReasoningEffort(foundry.Model));
 
 // Map one AG-UI endpoint per scenario. Each is an HTTP POST that streams AG-UI events (SSE).
 app.MapAGUIServer("/agentic_chat", agents.CreateAgenticChat());
+app.MapAGUIServer("/voice_chat", agents.CreateVoiceChat());
 app.MapAGUIServer("/backend_tool_rendering", agents.CreateBackendToolRendering());
 app.MapAGUIServer("/human_in_the_loop", agents.CreateHumanInTheLoop());
 app.MapAGUIServer("/tool_based_generative_ui", agents.CreateToolBasedGenerativeUI());
@@ -47,6 +48,7 @@ app.MapGet("/", () => Results.Ok(new
     endpoints = new[]
     {
         "/agentic_chat",
+        "/voice_chat",
         "/backend_tool_rendering",
         "/human_in_the_loop",
         "/tool_based_generative_ui",

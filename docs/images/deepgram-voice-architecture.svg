@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Real-time voice with Deepgram, AG-UI, and .NET</title>
+  <desc id="desc">The browser streams microphone audio to Deepgram Flux speech-to-text and plays replies from Deepgram Flux TTS, authenticating with short-lived tokens minted by the Blazor web app. The Blazor web app sends each finished turn to the agent server over AG-UI and streams the reply's sentences back to the browser. The agent server runs a Microsoft Agent Framework agent on Microsoft Foundry. Aspire orchestrates the web app and agent server.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17122b"/>
+      <stop offset="1" stop-color="#2c1854"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity=".25"/>
+    </filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L14,7 L0,14 z" fill="#68d5ff"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="760" rx="28" fill="url(#background)"/>
+  <text x="60" y="72" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="700">Real-time voice with Deepgram, AG-UI, and .NET</text>
+  <text x="60" y="108" fill="#c9b8ee" font-family="Segoe UI, Arial, sans-serif" font-size="20">Flux speech-to-text and Flux TTS around a Blazor and Agent Framework app</text>
+
+  <!-- Deepgram cloud -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="140" width="660" height="140" rx="22" fill="#101014"/>
+  </g>
+  <text x="74" y="174" fill="#13ef93" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Deepgram</text>
+  <rect x="70" y="192" width="200" height="70" rx="16" fill="#13ef93"/>
+  <text x="170" y="222" text-anchor="middle" fill="#101014" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700">Flux STT</text>
+  <text x="170" y="246" text-anchor="middle" fill="#101014" font-family="Segoe UI, Arial, sans-serif" font-size="15">/v2/listen</text>
+  <rect x="285" y="192" width="200" height="70" rx="16" fill="#13ef93"/>
+  <text x="385" y="222" text-anchor="middle" fill="#101014" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700">Flux TTS</text>
+  <text x="385" y="246" text-anchor="middle" fill="#101014" font-family="Segoe UI, Arial, sans-serif" font-size="15">/v2/speak</text>
+  <rect x="500" y="192" width="190" height="70" rx="16" fill="#2a2a33" stroke="#13ef93" stroke-width="2"/>
+  <text x="595" y="222" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700">Auth</text>
+  <text x="595" y="246" text-anchor="middle" fill="#c9c9d4" font-family="Segoe UI, Arial, sans-serif" font-size="15">/v1/auth/grant</text>
+
+  <!-- Microsoft Foundry -->
+  <g filter="url(#shadow)">
+    <rect x="800" y="140" width="320" height="140" rx="22" fill="#ffffff"/>
+    <circle cx="850" cy="192" r="26" fill="#0078d4"/>
+    <text x="850" y="200" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">F</text>
+    <text x="890" y="186" fill="#24133f" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Microsoft Foundry</text>
+    <text x="890" y="210" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="16">Azure OpenAI</text>
+    <text x="826" y="254" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">gpt-5-mini, minimal reasoning</text>
+  </g>
+
+  <!-- Aspire boundary -->
+  <rect x="395" y="350" width="750" height="350" rx="24" fill="none" stroke="#9f7aea" stroke-width="3" stroke-dasharray="10 9"/>
+  <rect x="415" y="331" width="175" height="40" rx="20" fill="#6f42c1"/>
+  <text x="502" y="358" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="600">Aspire AppHost</text>
+
+  <!-- Browser -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="390" width="280" height="290" rx="22" fill="#ffffff"/>
+    <circle cx="98" cy="440" r="26" fill="#f0b400"/>
+    <text x="98" y="448" text-anchor="middle" fill="#24133f" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700">JS</text>
+    <text x="138" y="436" fill="#24133f" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Browser</text>
+    <text x="138" y="460" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="15">VoiceControls.razor.js</text>
+    <text x="74" y="508" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Mic → AudioWorklet</text>
+    <text x="74" y="538" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">16 kHz PCM, 80 ms frames</text>
+    <text x="74" y="574" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Voice state machine</text>
+    <text x="74" y="604" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Barge-in and Interrupt</text>
+    <text x="74" y="640" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Web Audio playback</text>
+  </g>
+
+  <!-- Blazor Web App -->
+  <g filter="url(#shadow)">
+    <rect x="420" y="390" width="320" height="290" rx="22" fill="#ffffff"/>
+    <circle cx="468" cy="440" r="26" fill="#512bd4"/>
+    <text x="468" y="448" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">B</text>
+    <text x="508" y="436" fill="#24133f" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Blazor Web App</text>
+    <text x="508" y="460" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="15">Interactive Server</text>
+    <text x="444" y="508" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">VoiceControls and VoiceState</text>
+    <text x="444" y="538" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">UIAgent and AgentContext</text>
+    <text x="444" y="574" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">SpeechTapChatClient</text>
+    <text x="444" y="604" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">AGUIChatClient</text>
+    <text x="444" y="640" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">/api/deepgram/token</text>
+  </g>
+
+  <!-- Agent Server -->
+  <g filter="url(#shadow)">
+    <rect x="805" y="390" width="315" height="290" rx="22" fill="#ffffff"/>
+    <circle cx="853" cy="440" r="26" fill="#7b2cbf"/>
+    <text x="853" y="447" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="700">API</text>
+    <text x="893" y="436" fill="#24133f" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Agent Server</text>
+    <text x="893" y="460" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="15">ASP.NET Core</text>
+    <text x="829" y="508" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">MapAGUIServer("/voice_chat")</text>
+    <text x="829" y="538" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">AGUI.Server</text>
+    <text x="829" y="574" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">MAF AIAgent</text>
+    <text x="829" y="604" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Voice-first instructions</text>
+    <text x="829" y="640" fill="#4b3f5c" font-family="Segoe UI, Arial, sans-serif" font-size="17">Microsoft.Agents.AI.OpenAI</text>
+  </g>
+
+  <!-- Browser <-> Flux STT -->
+  <line x1="130" y1="388" x2="130" y2="266" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="200" y1="266" x2="200" y2="388" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="84" y="324" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">audio</text>
+  <text x="208" y="318" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">StartOfTurn,</text>
+  <text x="208" y="336" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">EndOfTurn</text>
+
+  <!-- Browser <-> Flux TTS -->
+  <line x1="280" y1="388" x2="355" y2="268" stroke="#68d5ff" stroke-width="4" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="348" y="300" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">Speak, Flush, Interrupt</text>
+  <text x="348" y="318" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">← PCM audio</text>
+
+  <!-- Web App -> Auth -->
+  <line x1="595" y1="388" x2="595" y2="266" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="604" y="312" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">API key →</text>
+  <text x="604" y="330" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">30 s JWT</text>
+
+  <!-- Agent Server <-> Foundry -->
+  <line x1="960" y1="388" x2="960" y2="284" stroke="#68d5ff" stroke-width="4" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="970" y="330" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="14">streaming completions</text>
+
+  <!-- Browser <-> Web App -->
+  <line x1="332" y1="510" x2="416" y2="510" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="374" y="500" text-anchor="middle" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="13">transcript</text>
+  <line x1="416" y1="600" x2="332" y2="600" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="374" y="590" text-anchor="middle" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="13">sentences</text>
+  <text x="374" y="626" text-anchor="middle" fill="#c9b8ee" font-family="Segoe UI, Arial, sans-serif" font-size="12">JS interop</text>
+
+  <!-- Web App <-> Agent Server -->
+  <line x1="742" y1="510" x2="801" y2="510" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="772" y="500" text-anchor="middle" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="13">AG-UI</text>
+  <line x1="801" y1="600" x2="742" y2="600" stroke="#68d5ff" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="772" y="590" text-anchor="middle" fill="#dff7ff" font-family="Segoe UI, Arial, sans-serif" font-size="13">SSE</text>
+
+  <text x="600" y="735" text-anchor="middle" fill="#c9b8ee" font-family="Segoe UI, Arial, sans-serif" font-size="17">Audio never crosses the Blazor circuit, and the Deepgram API key never reaches the browser.</text>
+</svg>

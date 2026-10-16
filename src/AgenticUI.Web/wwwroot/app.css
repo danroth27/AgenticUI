@@ -239,6 +239,7 @@ ul.sc-ai-rich-text__list > .sc-ai-rich-text__list-item::before {
 .workspace-chat__reset { width: 2rem; height: 2rem; border: 1px solid var(--app-border);
     border-radius: .6rem; background: var(--app-bg); color: var(--app-text-muted); font-size: 1.2rem; }
 .predictive-chat-panel { flex: 1 1 auto; min-height: 0; height: auto; background: transparent; }
+.voice-chat__welcome { margin: 3rem auto; color: var(--app-text-muted); text-align: center; }
 .predictive-chat__welcome { max-width: 18rem; margin: auto; color: var(--app-text-muted);
     font-size: .85rem; line-height: 1.6; text-align: center; }
 .document-suggestions { display: flex; flex-wrap: wrap; gap: .35rem; padding: .6rem .75rem 0; }

@@ -1,0 +1,328 @@
+@using AgenticUI.Web.Voice
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+@inject ILogger<VoiceControls> Logger
+
+@if (_enabled)
+{
+    <div class="voice-controls" data-state="@_state.DataAttribute()">
+        @if (_error is not null)
+        {
+            <div class="voice-controls__bubble voice-controls__bubble--error" role="alert">@_error</div>
+        }
+        else if (_state == VoiceState.Listening && !string.IsNullOrEmpty(_interim))
+        {
+            <div class="voice-controls__bubble">@_interim</div>
+        }
+
+        <span class="voice-controls__meter" @ref="_meter">
+            <button type="button"
+                    class="voice-controls__button voice-controls__mic"
+                    title="@MicLabel"
+                    aria-label="@MicLabel"
+                    aria-pressed="@IsSessionOpen"
+                    disabled="@(_unsupportedReason is not null || _state == VoiceState.Connecting)"
+                    @onclick="ToggleSessionAsync">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
+                    <path d="M19 11a7 7 0 0 1-14 0M12 18v3" />
+                </svg>
+            </button>
+        </span>
+
+        @if (_state.IsActive())
+        {
+            <button type="button"
+                    class="voice-controls__button @(_muted ? "voice-controls__button--muted" : null)"
+                    title="@(_muted ? "Speak replies aloud" : "Mute spoken replies")"
+                    aria-label="@(_muted ? "Speak replies aloud" : "Mute spoken replies")"
+                    aria-pressed="@_muted"
+                    @onclick="ToggleMutedAsync">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+                    @if (_muted)
+                    {
+                        <path d="m17 9 5 6m0-6-5 6" />
+                    }
+                    else
+                    {
+                        <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+                    }
+                </svg>
+            </button>
+        }
+
+        @* The single visible source of truth: the dot is decorative, the text carries the meaning. *@
+        <span class="voice-controls__status" role="status" aria-live="polite">
+            @if (_state is not VoiceState.Idle and not VoiceState.Error)
+            {
+                <span class="voice-controls__dot" aria-hidden="true"></span>
+                @_state.Label()
+            }
+        </span>
+    </div>
+}
+
+@code {
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _session;
+    private DotNetObjectReference<VoiceControls>? _selfReference;
+    private ElementReference _meter;
+    private bool _enabled;
+    private string? _unsupportedReason;
+    private VoiceState _state = VoiceState.Idle;
+    private bool _muted;
+    private string? _interim;
+    private string? _error;
+    private int _latestTurnIndex = -1;
+
+    [CascadingParameter]
+    public AgentContext AgentContext { get; set; } = default!;
+
+    /// <summary>The chat client tap that feeds the agent's reply to text-to-speech.</summary>
+    [Parameter, EditorRequired]
+    public SpeechTapChatClient SpeechTap { get; set; } = default!;
+
+    private bool IsSessionOpen => _state.IsActive() || _state == VoiceState.Connecting;
+
+    private string MicLabel => _unsupportedReason
+        ?? (IsSessionOpen ? "End voice session" : "Start a voice session");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender ||
+            string.IsNullOrWhiteSpace(Configuration[DeepgramTokenEndpoint.ApiKeyVariable]))
+        {
+            return;
+        }
+
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Voice/VoiceControls.razor.js");
+            _unsupportedReason = await _module.InvokeAsync<string?>("preflight");
+            _selfReference = DotNetObjectReference.Create(this);
+            _session = await _module.InvokeAsync<IJSObjectReference>("createSession", _selfReference);
+        }
+        catch (Exception exception) when (IsInteropFailure(exception))
+        {
+            Logger.LogWarning(exception, "Voice controls failed to initialize.");
+            return;
+        }
+
+        SpeechTap.ResponseStarted = () => CallSessionAsync("beginResponse");
+        SpeechTap.SentenceReady = sentence => CallSessionAsync("speak", sentence);
+        SpeechTap.ResponseEnded = _ => CallSessionAsync("endResponse");
+        UpdateSpeechTap();
+
+        _enabled = true;
+        StateHasChanged();
+    }
+
+    private async Task ToggleSessionAsync()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _interim = null;
+        if (IsSessionOpen)
+        {
+            await TryCallSessionAsync(_session, "stop");
+        }
+        else
+        {
+            await TryCallSessionAsync(_session, "start", _meter);
+        }
+    }
+
+    private async Task ToggleMutedAsync()
+    {
+        _muted = !_muted;
+        UpdateSpeechTap();
+        if (_session is not null)
+        {
+            await TryCallSessionAsync(_session, "setMuted", _muted);
+        }
+    }
+
+    // Replies are voiced only during an active, unmuted voice session.
+    private void UpdateSpeechTap() => SpeechTap.Enabled = _state.IsActive() && !_muted;
+
+    [JSInvokable]
+    public void OnStateChanged(string state)
+    {
+        _state = VoiceStates.Parse(state);
+        if (_state is VoiceState.Idle or VoiceState.Connecting)
+        {
+            _interim = null;
+        }
+
+        if (_state == VoiceState.Connecting)
+        {
+            _error = null; // A new attempt clears the last failure.
+        }
+
+        UpdateSpeechTap();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnError(string name, string message)
+    {
+        Logger.LogInformation("Voice session failed: {Name}: {Message}", name, message);
+        _error = VoiceStates.Humanize(name, message);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnInterimTranscript(string transcript, int turnIndex)
+    {
+        _latestTurnIndex = Math.Max(_latestTurnIndex, turnIndex);
+        _interim = transcript;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnFinalTranscript(string transcript, int turnIndex)
+    {
+        _latestTurnIndex = Math.Max(_latestTurnIndex, turnIndex);
+        _interim = null;
+        StateHasChanged();
+
+        if (AgentContext.Status == ConversationStatus.AwaitingInput)
+        {
+            // A tool is waiting on the user; a new message would talk over it.
+            await ResumeListeningAsync();
+            return;
+        }
+
+        // A barge-in has already cancelled any reply in flight; give it a moment to wind down.
+        await WaitUntilNotStreamingAsync();
+
+        // The user started another turn while we waited, so this one is stale.
+        if (turnIndex < _latestTurnIndex || !_state.IsActive())
+        {
+            await ResumeListeningAsync();
+            return;
+        }
+
+        // SendMessageAsync completes when the whole turn finishes, so don't hold up the JS callback.
+        _ = SendAsync(transcript);
+    }
+
+    // The user started talking over a reply: stop generating it, not just playing it.
+    [JSInvokable]
+    public async Task OnBargeIn()
+    {
+        if (AgentContext.Status == ConversationStatus.Streaming)
+        {
+            await AgentContext.CancelAsync();
+        }
+    }
+
+    // What the user actually heard of the reply they interrupted (null when nothing was heard).
+    [JSInvokable]
+    public void OnSpeechInterrupted(string? spokenText) => SpeechTap.RecordInterruption(spokenText);
+
+    private Task ResumeListeningAsync() =>
+        _session is null ? Task.CompletedTask : TryCallSessionAsync(_session, "resumeListening");
+
+    private async Task SendAsync(string text)
+    {
+        try
+        {
+            await AgentContext.SendMessageAsync(text);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Logger.LogWarning(exception, "Sending the voice transcript failed.");
+        }
+    }
+
+    // CancelAsync only requests cancellation, so wait (briefly) for the stream to actually wind down
+    // before sending the next message.
+    private async Task WaitUntilNotStreamingAsync()
+    {
+        if (AgentContext.Status != ConversationStatus.Streaming)
+        {
+            return;
+        }
+
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = AgentContext.RegisterOnStatusChanged(status =>
+        {
+            if (status != ConversationStatus.Streaming)
+            {
+                stopped.TrySetResult();
+            }
+        });
+
+        if (AgentContext.Status != ConversationStatus.Streaming)
+        {
+            return;
+        }
+
+        await Task.WhenAny(stopped.Task, Task.Delay(TimeSpan.FromSeconds(2)));
+    }
+
+    // The tap raises these from the streaming pipeline. Dispatching keeps the calls in order, and not
+    // waiting for JS to finish keeps text-to-speech from slowing the text stream.
+    private Task CallSessionAsync(string identifier, params object?[] args) =>
+        InvokeAsync(() =>
+        {
+            if (_session is { } session)
+            {
+                _ = TryCallSessionAsync(session, identifier, args);
+            }
+        });
+
+    private async Task TryCallSessionAsync(
+        IJSObjectReference session,
+        string identifier,
+        params object?[] args)
+    {
+        try
+        {
+            await session.InvokeVoidAsync(identifier, args);
+        }
+        catch (Exception exception) when (IsInteropFailure(exception))
+        {
+            Logger.LogDebug(exception, "Voice interop call '{Identifier}' failed.", identifier);
+        }
+    }
+
+    private static bool IsInteropFailure(Exception exception) =>
+        exception is JSException or JSDisconnectedException or TaskCanceledException;
+
+    public async ValueTask DisposeAsync()
+    {
+        SpeechTap.Enabled = false;
+        SpeechTap.ResponseStarted = null;
+        SpeechTap.SentenceReady = null;
+        SpeechTap.ResponseEnded = null;
+
+        try
+        {
+            if (_session is not null)
+            {
+                await _session.InvokeVoidAsync("dispose");
+                await _session.DisposeAsync();
+            }
+
+            if (_module is not null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone, and the browser has already torn the page down.
+        }
+
+        _selfReference?.Dispose();
+    }
+}

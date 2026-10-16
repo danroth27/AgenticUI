@@ -13,6 +13,16 @@ var foundryReasoningModel = builder.AddParameter("foundry-reasoning-model",
 
 var foundry = builder.AddExternalService("foundry", foundryEndpoint);
 
+// Deepgram API key for the voice scenario. Only the web project sees it: the browser never gets the
+// key, just short-lived JWTs minted by the web project's /api/deepgram/token endpoint. The key is
+// optional (read from configuration like the model names above) so the app still starts without it;
+// the voice controls simply stay hidden. A DEEPGRAM_API_KEY environment variable also works.
+var deepgramApiKey = builder.AddParameter("deepgram-api-key",
+    value: builder.Configuration["Parameters:deepgram-api-key"]
+        ?? builder.Configuration["DEEPGRAM_API_KEY"]
+        ?? string.Empty,
+    secret: true);
+
 // The AG-UI agent server: hosts one AG-UI endpoint per demo scenario (MAF + AG-UI C# SDK).
 var agentServer = builder.AddProject<Projects.AgenticUI_AgentServer>("agentserver")
     .WithEnvironment("FOUNDRY_URI", foundry)
@@ -21,6 +31,7 @@ var agentServer = builder.AddProject<Projects.AgenticUI_AgentServer>("agentserve
 
 // The Blazor front end: consumes the AG-UI endpoints via the Blazor AI components.
 builder.AddProject<Projects.AgenticUI_Web>("web")
+    .WithEnvironment("DEEPGRAM_API_KEY", deepgramApiKey)
     .WithReference(agentServer)
     .WaitFor(agentServer);
 

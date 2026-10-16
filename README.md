@@ -16,6 +16,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 | **Predictive state** | Proposed document edits with accept/reject and rollback | `/predictive_state` |
 | **Agentic generative UI** | Live plan via `STATE_SNAPSHOT` + `STATE_DELTA` (JSON Patch) | `/agentic_generative_ui` |
 | **Reasoning** | Reasoning summaries via `REASONING_*` events and a custom activity block | `/reasoning` |
+| **Real-time voice chat** | Agentic chat driven by voice: [Deepgram](https://deepgram.com) Flux speech-to-text in, Flux text-to-speech out, with barge-in | `/voice_chat` |
 
 ## Architecture
 
@@ -23,7 +24,14 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 - **`AgenticUI.AgentServer`** — ASP.NET Core app. Uses `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (`AddAGUIServer()` + `MapAGUIServer("/route", agent)`) to expose one AG-UI endpoint per scenario. Agents are MAF `AIAgent`s backed by Microsoft Foundry via `Microsoft.Agents.AI.OpenAI`.
 - **`AgenticUI.Web`** — Blazor Web App (Interactive Server). Each scenario builds a `UIAgent` over an `AGUIChatClient` (from the AG-UI C# SDK's `AGUI.Client`), which turns an AG-UI endpoint into a standard `IChatClient`. UI is rendered with the Blazor AI components (`ChatPage`, `MessageList`, `BlockRenderer`, `UIAgent<TState>`, …).
+- **Voice** — the real-time voice chat scenario layers Deepgram around the unchanged AG-UI pipeline. The browser streams microphone audio straight to Deepgram Flux (`wss://api.deepgram.com/v2/listen`), and Flux's end-of-turn detection triggers `AgentContext.SendMessageAsync` with the transcript. A `SpeechTapChatClient` inside `FormattedChatClient` splits the streamed reply into sentences, and the browser streams them to Deepgram Flux TTS (`wss://api.deepgram.com/v2/speak`) as one turn per reply. Both sockets authenticate with short-lived JWTs from the web app's `/api/deepgram/token` endpoint, so the API key never reaches the browser and no audio crosses the Blazor circuit. The voice UI follows the [Deepgram voice UI best practices](https://github.com/dg-edcharbeneau/voice-best-practices): an explicit, always-visible state machine, a mic meter, barge-in that reports what the user actually heard back into the agent's history, and one TTS socket per voice session.
 - **`AgenticUI.AppHost` / `AgenticUI.ServiceDefaults`** — Aspire orchestration and service discovery.
+
+### Real-time voice
+
+![Real-time voice architecture: the browser streams audio to Deepgram Flux speech-to-text and plays Flux TTS audio, the Blazor web app mints Deepgram tokens and talks to the agent server over AG-UI, and the agent server runs on Microsoft Foundry](docs/images/deepgram-voice-architecture.svg)
+
+The browser owns both Deepgram WebSockets, so audio never crosses the Blazor circuit. The web app only mints short-lived tokens and moves text: the finished transcript goes to the `/voice_chat` agent over AG-UI, and the reply's sentences come back to the browser for Flux TTS.
 
 ### Packages used
 
@@ -43,6 +51,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
   `gpt-5-mini` deployment (used for both the general chat and reasoning scenarios).
+- Optional: a [Deepgram API key](https://console.deepgram.com/signup) for the real-time voice chat scenario.
 
 ### Clone and build
 
@@ -86,6 +95,18 @@ dotnet user-secrets set "Parameters:foundry-reasoning-model" "<reasoning-deploym
 > the Responses API's reasoning summary setting and surfaces the summaries as `TextReasoningContent`,
 > which the MAF AG-UI adapter emits as `REASONING_*` events.
 
+### Configure Deepgram (optional)
+
+The real-time voice chat scenario needs a Deepgram API key. It stays on the server; the web app exchanges it
+for 30-second JWTs that the browser uses to open its Deepgram WebSockets.
+
+```bash
+dotnet user-secrets set "Parameters:deepgram-api-key" "<deepgram-api-key>" --project src/AgenticUI.AppHost
+```
+
+A `DEEPGRAM_API_KEY` environment variable works too. Without a key the app runs normally and the
+voice controls stay hidden.
+
 ### Run
 
 ```bash
@@ -98,6 +119,8 @@ Open the Aspire dashboard, then open the **web** resource and pick a scenario fr
 
 - **No Microsoft Foundry endpoint configured:** Set the `Parameters:foundry-endpoint` AppHost user-secret shown above.
 - **Authentication failures:** Run `az login` again and verify that the selected identity has the **Cognitive Services OpenAI User** role.
+- **Microphone button disabled on Real-time voice chat:** Hover it for the reason. Voice needs a secure context (the `https` endpoint, or `localhost`) and a browser with `getUserMedia` and `AudioWorklet`.
+- **No microphone button on Real-time voice chat:** Set `Parameters:deepgram-api-key` and restart the AppHost. The browser also needs microphone permission and a secure context (the `https` endpoint, or `localhost`).
 - **Model deployment not found:** Set `Parameters:foundry-model` and `Parameters:foundry-reasoning-model` to the deployment names configured in your Foundry account.
 
 ## Repository layout

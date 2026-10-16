@@ -62,6 +62,21 @@ public static class Foundry
         CreateClient(options).GetChatClient(model ?? options.Model);
 
     /// <summary>
+    /// Whether a deployment accepts the <c>reasoning_effort</c> request option. Reasoning models
+    /// (the o-series and GPT-5, apart from the non-reasoning <c>gpt-5-chat</c>) accept it; other
+    /// models such as gpt-4o-mini reject the request with HTTP 400. This goes by the deployment name,
+    /// so it assumes deployments are named after their model, as the defaults here are.
+    /// </summary>
+    public static bool SupportsReasoningEffort(string deployment)
+    {
+        var name = deployment.ToLowerInvariant();
+        return (name.StartsWith("gpt-5", StringComparison.Ordinal) && !name.Contains("chat", StringComparison.Ordinal)) ||
+            name.StartsWith("o1", StringComparison.Ordinal) ||
+            name.StartsWith("o3", StringComparison.Ordinal) ||
+            name.StartsWith("o4", StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Creates the chat client for the reasoning scenario over the OpenAI <em>Responses</em> API.
     /// Reasoning models only surface their reasoning summaries through the Responses API, and
     /// Microsoft.Extensions.AI maps those summaries to <see cref="TextReasoningContent"/> — which the

@@ -1,0 +1,136 @@
+.voice-controls {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--sc-ai-spacing-xs, .25rem);
+    flex-shrink: 0;
+}
+
+.voice-controls__button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--sc-ai-color-border, #dee2e6);
+    border-radius: 50%;
+    background: var(--sc-ai-color-surface, #fff);
+    color: var(--sc-ai-color-text-secondary, #6c757d);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--sc-ai-transition-fast, 120ms ease),
+        color var(--sc-ai-transition-fast, 120ms ease);
+}
+
+.voice-controls__button:hover:not(:disabled) {
+    background: var(--sc-ai-color-surface-hover, #f8f9fa);
+    color: var(--sc-ai-color-text, #212529);
+}
+
+.voice-controls__button:focus-visible {
+    outline: none;
+    box-shadow: var(--sc-ai-focus-ring, 0 0 0 2px #0d6efd);
+}
+
+.voice-controls__button:disabled {
+    opacity: var(--sc-ai-disabled-opacity, .5);
+    cursor: default;
+}
+
+.voice-controls__button svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.voice-controls__button--muted {
+    opacity: .7;
+}
+
+/* A session is open: the mic button is filled with the accent color. */
+.voice-controls:is([data-state="listening"], [data-state="thinking"], [data-state="speaking"]) .voice-controls__mic,
+.voice-controls:is([data-state="listening"], [data-state="thinking"], [data-state="speaking"]) .voice-controls__mic:hover:not(:disabled) {
+    background: var(--sc-ai-color-accent, #0d6efd);
+    border-color: var(--sc-ai-color-accent, #0d6efd);
+    color: var(--sc-ai-color-text-on-accent, #fff);
+}
+
+/* Mic meter: a ring around the mic button that grows with the input level. --level (0..1) is set
+   from JavaScript on every animation frame, so it never travels over the Blazor circuit. */
+.voice-controls__meter {
+    display: flex;
+    border-radius: 50%;
+    box-shadow: 0 0 0 calc(var(--level, 0) * .55rem) rgb(13 110 253 / .25);
+    transition: box-shadow 60ms linear;
+}
+
+/* State: always visible during a session. The text carries the meaning; the dot is decoration. */
+.voice-controls__status {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-left: .25rem;
+    color: var(--sc-ai-color-text-secondary, #6c757d);
+    font-size: var(--sc-ai-font-size-sm, .8125rem);
+    white-space: nowrap;
+}
+
+.voice-controls__dot {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--sc-ai-color-text-secondary, #6c757d);
+}
+
+[data-state="listening"] .voice-controls__dot {
+    background: var(--sc-ai-color-success, #198754);
+    animation: voice-pulse 1.6s ease-out infinite;
+}
+
+[data-state="thinking"] .voice-controls__dot {
+    background: #f59f00;
+}
+
+[data-state="speaking"] .voice-controls__dot {
+    background: var(--sc-ai-color-accent, #0d6efd);
+}
+
+/* Interim transcript and errors float above the input so the input row keeps its height. */
+.voice-controls__bubble {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + .75rem);
+    max-width: min(36rem, 70vw);
+    padding: .3rem .7rem;
+    border-radius: var(--sc-ai-border-radius-sm, .375rem);
+    background: var(--sc-ai-color-surface, #fff);
+    border: 1px solid var(--sc-ai-color-border, #dee2e6);
+    box-shadow: 0 2px 8px rgb(0 0 0 / .08);
+    color: var(--sc-ai-color-text-secondary, #6c757d);
+    font-size: var(--sc-ai-font-size-sm, .8125rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.voice-controls__bubble--error {
+    color: var(--sc-ai-color-error, #dc3545);
+    background: var(--sc-ai-color-error-bg, #f8d7da);
+    border-color: transparent;
+    white-space: normal;
+}
+
+@keyframes voice-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(25 135 84 / .5); }
+    100% { box-shadow: 0 0 0 .35rem rgb(25 135 84 / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .voice-controls__dot { animation: none !important; }
+    .voice-controls__meter { transition: none; }
+}

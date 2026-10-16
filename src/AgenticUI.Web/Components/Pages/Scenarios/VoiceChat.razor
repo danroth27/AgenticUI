@@ -1,0 +1,90 @@
+@page "/voice-chat"
+@using AgenticUI.Web.Formatting
+@using AgenticUI.Web.Voice
+@inject AgentServerConnection Agents
+@inject ILoggerFactory LoggerFactory
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<PageTitle>Real-time Voice Chat</PageTitle>
+
+<div class="scenario">
+    <div class="scenario__intro">
+        <h1>Real-time voice chat</h1>
+        <p>
+            Agentic chat with a voice, backed by a <code>/voice_chat</code> agent whose instructions
+            ask for short, spoken-style replies. Click the microphone to start a voice
+            session: the browser streams audio to Deepgram <strong>Flux</strong>, whose end-of-turn
+            detection decides when you've finished speaking and sends the transcript through
+            <code>AgentContext.SendMessageAsync</code>. A delegating chat client streams the reply's
+            sentences to Deepgram <strong>Flux TTS</strong>, so audio starts before the reply is
+            done. Talk over the agent to interrupt it; the agent then knows exactly what you heard.
+            The voice UI follows the
+            <a href="https://github.com/dg-edcharbeneau/voice-best-practices" target="_blank" rel="noopener">Deepgram voice UI best practices</a>.
+        </p>
+        <p class="scenario__note">
+            @if (string.IsNullOrWhiteSpace(Configuration[DeepgramTokenEndpoint.ApiKeyVariable]))
+            {
+                <text>
+                    Voice is off: set the <code>Parameters:deepgram-api-key</code> AppHost user-secret
+                    and restart to enable the microphone and spoken replies.
+                </text>
+            }
+            else
+            {
+                <text>
+                    The browser connects to Deepgram directly with short-lived tokens minted by the
+                    server, so the API key never leaves it.
+                </text>
+            }
+        </p>
+    </div>
+
+    <div class="scenario__chat">
+        <AgentBoundary Agent="_agent">
+            <div class="sc-ai-root sc-ai-chat-page">
+                <div class="sc-ai-chat-page__body">
+                    <MessageList>
+                        <EmptyContent>
+                            <p class="voice-chat__welcome">
+                                Click the microphone and start talking, or type a message.
+                            </p>
+                        </EmptyContent>
+                    </MessageList>
+                </div>
+                <div class="sc-ai-chat-page__footer">
+                    <div class="sc-ai-chat-page__input-container">
+                        <MessageInput Placeholder="Ask me anything…">
+                            <LeadingActions>
+                                <VoiceControls SpeechTap="_speechTap" />
+                            </LeadingActions>
+                        </MessageInput>
+                    </div>
+                </div>
+            </div>
+        </AgentBoundary>
+    </div>
+</div>
+
+@code {
+    private UIAgent _agent = default!;
+    private IChatClient _chatClient = default!;
+    private SpeechTapChatClient _speechTap = default!;
+
+    protected override void OnInitialized()
+    {
+        // The speech tap sits inside FormattedChatClient so it reads the raw streamed text, not the
+        // RichTextContent snapshots that the formatter adds for rendering.
+        _speechTap = new SpeechTapChatClient(
+            Agents.CreateChatClient("/voice_chat"),
+            LoggerFactory.CreateLogger<SpeechTapChatClient>());
+        _chatClient = new FormattedChatClient(_speechTap);
+        _agent = new UIAgent(_chatClient);
+    }
+
+    public void Dispose()
+    {
+        _agent.Dispose();
+        _chatClient.Dispose();
+    }
+}

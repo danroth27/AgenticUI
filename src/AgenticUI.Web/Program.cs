@@ -1,5 +1,6 @@
 using AgenticUI.Web;
 using AgenticUI.Web.Components;
+using AgenticUI.Web.Voice;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,9 @@ builder.Services.AddHttpClient("agentserver", client =>
 // Helper that turns an AG-UI endpoint on the agent server into an IChatClient / UIAgent.
 builder.Services.AddScoped<AgentServerConnection>();
 
+// Deepgram token minting for the voice scenario (reads DEEPGRAM_API_KEY, supplied by the AppHost).
+builder.Services.AddDeepgramTokens();
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
@@ -42,6 +46,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapDeepgramToken();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
