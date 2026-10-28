@@ -1,6 +1,7 @@
-using Azure.AI.OpenAI;
+using System.ClientModel.Primitives;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
+using OpenAI;
 using OpenAI.Chat;
 
 namespace AgenticUI.AgentServer;
@@ -52,8 +53,12 @@ public static class Foundry
         return options;
     }
 
-    private static AzureOpenAIClient CreateClient(FoundryOptions options) =>
-        new(new Uri(options.Endpoint!, UriKind.Absolute), new DefaultAzureCredential());
+    private static OpenAIClient CreateClient(FoundryOptions options) =>
+        new(new BearerTokenPolicy(new DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"),
+            new OpenAIClientOptions
+            {
+                Endpoint = new Uri(new Uri(options.Endpoint!, UriKind.Absolute), "openai/v1/")
+            });
 
     /// <summary>Creates a chat-completions <see cref="ChatClient"/> for a Foundry deployment.</summary>
     /// <param name="options">The Foundry configuration.</param>

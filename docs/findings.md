@@ -4,14 +4,17 @@
 
 The sample currently uses:
 
-- .NET 11 RC2 and Aspire 13.5.3
-- `Microsoft.Agents.AI.OpenAI` and `Microsoft.Agents.AI.Workflows` 1.15.0
-- `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview.260722.1
-- `AGUI.Client` and `AGUI.Server` 1.0.0
-- `Azure.AI.OpenAI` 2.9.0-beta.1
-- `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26459.102
+- .NET 11 RC3 and Aspire 13.6.4
+- `Microsoft.Agents.AI.OpenAI` and `Microsoft.Agents.AI.Workflows` 1.26.0
+- `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.26.0-preview.261023.1
+- `AGUI.Client` and `AGUI.Server` 1.0.1
+- `OpenAI` 2.14.0 with Microsoft Entra ID authentication
+- `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26466.103
+- Bootstrap 5.3.8
 
-The web project explicitly references the .NET 11 RC2 `Microsoft.AspNetCore.Components.Web` package with its assets excluded, so the Components AI preview uses the ASP.NET Core shared framework at build and run time. The SDK is selected by the repository's `global.json`.
+The web project explicitly references the .NET 11 RC3 `Microsoft.AspNetCore.Components.Web` package with its assets excluded, so the Components AI preview uses the ASP.NET Core shared framework at build and run time.
+
+The agents use the OpenAI SDK directly against Microsoft Foundry's `/openai/v1/` endpoint with `DefaultAzureCredential` and `BearerTokenPolicy`. This avoids a runtime `MissingMethodException` in `Azure.AI.OpenAI` 2.9.0-beta.1's Responses client when combined with OpenAI 2.14.0, which Agent Framework 1.26.0 requires.
 
 ## Validated capabilities
 
@@ -85,4 +88,4 @@ The sample creates one stable AG-UI thread ID for each `UIAgent`; reset creates 
 
 After a rejected predictive-state proposal, the model can sometimes issue another proposal despite being instructed to acknowledge the rejection and stop. State rollback works correctly, but reliably preventing the repeated tool call would require targeted tool suppression or a client-only completion path rather than prompt instructions alone.
 
-`Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1 and `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.15.0-preview are preview packages. Their APIs and hosting behavior may change before stable releases.
+`Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1 and `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.26.0-preview are preview packages. Their APIs and hosting behavior may change before stable releases.
