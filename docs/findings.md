@@ -12,7 +12,7 @@ The sample currently uses:
 - `Microsoft.AspNetCore.Components.AI` 0.1.0-preview.1.26466.103
 - Bootstrap 5.3.8
 
-The web project explicitly references the .NET 11 RC3 `Microsoft.AspNetCore.Components.Web` package with its assets excluded, so the Components AI preview uses the ASP.NET Core shared framework at build and run time. The SDK is selected by the repository's `global.json`.
+The web project explicitly references the .NET 11 RC3 `Microsoft.AspNetCore.Components.Web` package with its assets excluded, so the Components AI preview uses the ASP.NET Core shared framework at build and run time.
 
 The agents use the OpenAI SDK directly against Microsoft Foundry's `/openai/v1/` endpoint with `DefaultAzureCredential` and `BearerTokenPolicy`. This avoids a runtime `MissingMethodException` in `Azure.AI.OpenAI` 2.9.0-beta.1's Responses client when combined with OpenAI 2.14.0, which Agent Framework 1.26.0 requires.
 

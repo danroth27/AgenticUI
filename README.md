@@ -39,7 +39,7 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 ### Prerequisites
 
-- [.NET 11 RC3 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) (`11.0.100-rc.3.26522.148`, selected by `global.json`)
+- [.NET 11 RC3 SDK or later](https://dotnet.microsoft.com/download/dotnet/11.0)
 - [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
@@ -52,7 +52,6 @@ git clone https://github.com/danroth27/AgenticUI.git
 cd AgenticUI
 dotnet restore
 dotnet build
-dotnet test
 ```
 
 ### Configure Microsoft Foundry
