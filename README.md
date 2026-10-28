@@ -27,18 +27,19 @@ This sample demonstrates how to build rich agentic user experiences with .NET. A
 
 ### Packages used
 
-- `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.15.0)
-- `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.15.0-preview — the AG-UI hosting glue is still preview)
-- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (1.0.0 — the stable AG-UI .NET SDK)
-- `Azure.AI.OpenAI` (2.9.0-beta.1)
-- `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26459.102)
-- `Aspire` (13.5.3)
+- `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI` (1.26.0)
+- `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` (1.26.0-preview.261023.1 — the AG-UI hosting glue is still preview)
+- `AGUI.Client`, `AGUI.Abstractions`, `AGUI.Formatting`, `AGUI.Server` (1.0.1 — the stable AG-UI .NET SDK)
+- `OpenAI` (2.14.0, using Microsoft Foundry's `/openai/v1/` endpoint with Microsoft Entra ID)
+- `Microsoft.AspNetCore.Components.AI` (0.1.0-preview.1.26466.103)
+- `Aspire` (13.6.4)
+- `Bootstrap` (5.3.8, vendored static assets)
 
 ## Running it
 
 ### Prerequisites
 
-- [.NET 11 RC2 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) (`11.0.100-rc.2.26504.105`, selected by `global.json`)
+- [.NET 11 RC3 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) (`11.0.100-rc.3.26522.148`, selected by `global.json`)
 - [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - A **[Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/) resource** with a
@@ -51,6 +52,7 @@ git clone https://github.com/danroth27/AgenticUI.git
 cd AgenticUI
 dotnet restore
 dotnet build
+dotnet test
 ```
 
 ### Configure Microsoft Foundry

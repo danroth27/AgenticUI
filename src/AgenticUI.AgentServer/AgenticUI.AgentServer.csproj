@@ -4,10 +4,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- OPENAI001: AzureOpenAIClient.GetResponsesClient() / AsIChatClient(ResponsesClient) are still
-         evaluation-only. Everything else this project uses - including the tool-approval APIs and
-         ChatOptions.Reasoning - is now stable, so no MEAI001 suppression is needed. -->
-    <NoWarn>$(NoWarn);OPENAI001</NoWarn>
+    <!-- Keep experimental OpenAI API diagnostics visible without blocking the build. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);OPENAI001</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,12 +14,12 @@
 
   <ItemGroup>
     <!-- MAF AG-UI server hosting (still in preview) layered over the AG-UI C# SDK -->
-    <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.15.0-preview.260722.1" />
-    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.15.0" />
-    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.15.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.26.0-preview.261023.1" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.26.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.26.0" />
     <!-- AG-UI C# SDK (released by the AG-UI team) -->
-    <PackageReference Include="AGUI.Server" Version="1.0.0" />
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
+    <PackageReference Include="AGUI.Server" Version="1.0.1" />
+    <PackageReference Include="OpenAI" Version="2.14.0" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
   </ItemGroup>
 

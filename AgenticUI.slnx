@@ -5,4 +5,7 @@
     <Project Path="src/AgenticUI.ServiceDefaults/AgenticUI.ServiceDefaults.csproj" />
     <Project Path="src/AgenticUI.Web/AgenticUI.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgenticUI.AgentServer.Tests/AgenticUI.AgentServer.Tests.csproj" />
+  </Folder>
 </Solution>
